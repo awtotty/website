@@ -1,8 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import { BookOpen, ExternalLink, Github, Linkedin } from "lucide-react";
-import Fuse from "fuse.js";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -32,33 +30,6 @@ const projects = [
 ];
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Configure Fuse.js for fuzzy search
-  const fuse = useMemo(
-    () =>
-      new Fuse(projects, {
-        keys: [
-          { name: "title", weight: 0.4 },
-          { name: "description", weight: 0.3 },
-          { name: "tags", weight: 0.3 },
-        ],
-        threshold: 0.5,
-        includeScore: true,
-      }),
-    [],
-  );
-
-  // Filter projects based on search query
-  const filteredProjects = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return projects;
-    }
-
-    const results = fuse.search(searchQuery);
-    return results.map((result) => result.item);
-  }, [searchQuery, fuse]);
-
   return (
     <>
       <Head>
@@ -110,9 +81,9 @@ export default function Home() {
           <section>
             {/* Projects Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredProjects.length > 0
+              {projects.length > 0
                 ? (
-                  filteredProjects.map((project) => (
+                  projects.map((project) => (
                     <Card
                       key={project.id}
                       className="hover:shadow-lg transition-shadow"
@@ -180,10 +151,7 @@ export default function Home() {
                 : (
                   <div className="col-span-full text-center py-12">
                     <p className="text-muted-foreground text-lg">
-                      No projects found matching &quot;{searchQuery}&quot;
-                    </p>
-                    <p className="text-muted-foreground text-sm mt-2">
-                      Try searching for different keywords or technologies.
+                      There&amp;s nothing here :(
                     </p>
                   </div>
                 )}
