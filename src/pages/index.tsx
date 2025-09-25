@@ -1,10 +1,13 @@
 import Head from "next/head";
 import Link from "next/link";
-import { Github, Linkedin, BookOpen, ExternalLink } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Github, Linkedin, BookOpen, ExternalLink, Search } from "lucide-react";
+import Fuse from "fuse.js";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import { Input } from "~/components/ui/input";
 
 const projects = [
   {
@@ -37,6 +40,33 @@ const projects = [
 ];
 
 export default function Home() {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Configure Fuse.js for fuzzy search
+  const fuse = useMemo(
+    () =>
+      new Fuse(projects, {
+        keys: [
+          { name: "title", weight: 0.4 },
+          { name: "description", weight: 0.3 },
+          { name: "tags", weight: 0.3 },
+        ],
+        threshold: 0.4,
+        includeScore: true,
+      }),
+    []
+  );
+
+  // Filter projects based on search query
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return projects;
+    }
+
+    const results = fuse.search(searchQuery);
+    return results.map((result) => result.item);
+  }, [searchQuery, fuse]);
+
   return (
     <>
       <Head>
@@ -81,9 +111,24 @@ export default function Home() {
 
           {/* Projects Section */}
           <section>
-            <h2 className="text-3xl font-bold text-center mb-12">Featured Projects</h2>
+            <h2 className="text-3xl font-bold text-center mb-8">Featured Projects</h2>
+
+            {/* Search Bar */}
+            <div className="relative mb-8">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search projects by title, description, or technology..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Projects Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {projects.map((project) => (
+              {filteredProjects.length > 0 ? (
+                filteredProjects.map((project) => (
                 <Card key={project.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
@@ -137,7 +182,16 @@ export default function Home() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ))) : (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground text-lg">
+                    No projects found matching &quot;{searchQuery}&quot;
+                  </p>
+                  <p className="text-muted-foreground text-sm mt-2">
+                    Try searching for different keywords or technologies.
+                  </p>
+                </div>
+              )}
             </div>
           </section>
         </div>
