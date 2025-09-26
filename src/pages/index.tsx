@@ -1,9 +1,12 @@
 import Head from "next/head";
 import Link from "next/link";
 import { BookOpen, ExternalLink, Github, Linkedin } from "lucide-react";
+                    <p className="text-muted-foreground text-sm mt-2">
+                      Try searching for different keywords or technologies.
+                    </p>
 
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 
 const projects = [
@@ -21,8 +24,8 @@ const projects = [
     id: "project-2",
     title: "Kenmo",
     description:
-      "Digital platform for sending and receiving Ken Kash, an educational currency used in the math classroom",
-    tags: ["Nextjs", "Vercel", "Double-entry bookkeeping"],
+      "Digital platform for sending and receiving Ken Cash, a fake currency used in the math classroom",
+    tags: ["Nextjs", "Vercel", "Ledger"],
     liveUrl: "https://kenmo.in",
     githubUrl: "https://github.com/awtotty/kenmo-v2",
     hasDetailPage: false,
@@ -86,21 +89,21 @@ export default function Home() {
                   projects.map((project) => (
                     <Card
                       key={project.id}
-                      className="hover:shadow-lg transition-shadow"
+                      className="hover:shadow-lg transition-shadow flex flex-col"
                     >
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">
                           {project.title}
                           <div className="flex gap-2">
                             {project.githubUrl && (
-                              <Button variant="ghost" size="sm" asChild>
+                              <Button variant="outline" size="sm" asChild>
                                 <Link href={project.githubUrl} target="_blank">
                                   <Github className="h-4 w-4" />
                                 </Link>
                               </Button>
                             )}
                             {project.blogUrl && (
-                              <Button variant="ghost" size="sm" asChild>
+                              <Button variant="outline" size="sm" asChild>
                                 <Link href={project.blogUrl} target="_blank">
                                   <BookOpen className="h-4 w-4" />
                                 </Link>
@@ -109,18 +112,20 @@ export default function Home() {
                           </div>
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex-1">
                         <p className="text-muted-foreground mb-4">
                           {project.description}
                         </p>
-                        <div className="flex flex-wrap gap-2 mb-4">
+                        <div className="flex flex-wrap gap-2">
                           {project.tags.map((tag) => (
                             <Badge key={tag} variant="secondary">
                               {tag}
                             </Badge>
                           ))}
                         </div>
-                        <div className="flex gap-2">
+                      </CardContent>
+                      <CardFooter>
+                        <div className="flex gap-2 w-full">
                           {project.hasDetailPage
                             ? (
                               <Button asChild className="flex-1">
@@ -144,7 +149,7 @@ export default function Home() {
                               </Button>
                             )}
                         </div>
-                      </CardContent>
+                      </CardFooter>
                     </Card>
                   ))
                 )
