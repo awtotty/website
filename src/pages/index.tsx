@@ -79,7 +79,7 @@ export default function Home() {
                                 alt={`${project.title} favicon`}
                                 width={24}
                                 height={24}
-                                className="rounded-sm"
+                                className="rounded-sm w-6 h-6 object-contain"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                 }}
