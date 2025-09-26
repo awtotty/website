@@ -21,8 +21,37 @@ export const projects: Project[] = [
     tags: ["LLM", "Nextjs", "TypeScript"],
     liveUrl: "https://formulaforms.app",
     blogUrl: "https://austintotty.substack.com/p/introducing-formula-ai-powered-forms",
-    hasDetailPage: false,
+    hasDetailPage: true,
     icon: "https://formulaforms.app/favicon.ico",
+    longDescription: `
+      Formula Forms is an AI-powered form creation platform that revolutionizes data collection through intelligent, conversational form experiences. Unlike traditional static forms, Formula creates dynamic questionnaires that adapt and respond to users in real-time.
+
+      Key features include:
+      • AI Form Assistant that generates complete questionnaires from simple descriptions
+      • Conversational forms that dynamically adapt based on user responses
+      • Multiple embedding options including popups and chat widgets
+      • Unlimited forms and responses with detailed analytics
+      • Real-time form adaptation for improved user engagement
+
+      Built for creators, educators, sales teams, and researchers, Formula Forms makes data collection more engaging and intelligent. The platform offers both free and premium tiers, with the premium version unlocking advanced AI-powered conversation features and form generation capabilities.
+
+      This project demonstrates expertise in modern AI integration, user experience design, and building scalable SaaS platforms with complex interactive features. 
+      Check out the blog post linked at the top of this page for more on the process of creating this application. 
+    `, 
+    technologies: [
+      "Frontend: Next.js with React 18",
+      "Backend: tRPC",
+      "Database: Supabase PostgreSQL with Prisma ORM",
+      "Authentication: NextAuth",
+      "Deployment: Vercel",
+      "UI: Shadcn, Tailwind",
+      "Purchases: Stripe"
+    ], 
+    challenges: [
+      "Cost-efficient use of LLMs", 
+      "Maintaining Claude Code output quality as complexity grows", 
+      "First time setting up Stripe and Google Ads"
+    ],
   },
   {
     id: "kenmo",
@@ -40,7 +69,6 @@ export const projects: Project[] = [
       • Digital wallet system for students and teachers
       • Transaction history and ledger management
       • Real-time balance updates and notifications
-      • Classroom management tools for educators
       • Double-entry bookkeeping system for accuracy
       • Mobile-responsive design for accessibility
 
@@ -48,17 +76,16 @@ export const projects: Project[] = [
     `,
     technologies: [
       "Frontend: Next.js with React 18",
-      "Backend: Next.js API routes",
-      "Database: PostgreSQL with Prisma ORM",
-      "Authentication: NextAuth.js",
-      "Deployment: Vercel platform",
-      "Styling: Tailwind CSS"
+      "Backend: tRPC",
+      "Database: Supabase PostgreSQL with Prisma ORM",
+      "Authentication: Clerk",
+      "Deployment: Vercel",
+      "UI: Tailwind"
     ],
     challenges: [
       "Implementing reliable double-entry bookkeeping system",
       "Ensuring transaction consistency and data integrity",
       "Creating intuitive user interface for educational use",
-      "Managing real-time updates across multiple users",
       "Designing secure authentication for students"
     ]
   },
