@@ -1,7 +1,8 @@
 import Head from "next/head";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/router";
-import { ArrowLeft, Github, BookOpen, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -15,7 +16,7 @@ export default function ProjectDetail() {
   const projectId = typeof id === 'string' ? id : '';
   const project = getProjectById(projectId);
 
-  if (!project || !project.hasDetailPage) {
+  if (!project?.hasDetailPage) {
     return (
       <>
         <Head>
@@ -53,7 +54,7 @@ export default function ProjectDetail() {
             <Button variant="ghost" asChild>
               <Link href="/">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Portfolio
+                Back
               </Link>
             </Button>
           </div>
@@ -80,7 +81,15 @@ export default function ProjectDetail() {
               {project.githubUrl && (
                 <Button variant="outline" size="lg" asChild>
                   <Link href={project.githubUrl} target="_blank">
-                    <Github className="h-5 w-5 mr-2" />
+                    <div className="w-5 h-5 mr-2 bg-white rounded-full p-0.5 flex items-center justify-center">
+                      <Image
+                        src="https://github.com/favicon.ico"
+                        alt="GitHub"
+                        width={16}
+                        height={16}
+                        className="w-4 h-4 object-contain"
+                      />
+                    </div>
                     Code
                   </Link>
                 </Button>
@@ -88,7 +97,13 @@ export default function ProjectDetail() {
               {project.blogUrl && (
                 <Button variant="outline" size="lg" asChild>
                   <Link href={project.blogUrl} target="_blank">
-                    <BookOpen className="h-5 w-5 mr-2" />
+                    <Image
+                      src="https://substack.com/favicon.ico"
+                      alt="Substack"
+                      width={20}
+                      height={20}
+                      className="w-5 h-5 mr-2 object-contain"
+                    />
                     Blog
                   </Link>
                 </Button>

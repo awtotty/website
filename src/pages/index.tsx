@@ -1,7 +1,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, ExternalLink, Github, Linkedin, Code2 } from "lucide-react";
+import { ExternalLink, Code2 } from "lucide-react";
                     <p className="text-muted-foreground text-sm mt-2">
                       Try searching for different keywords or technologies.
                     </p>
@@ -40,19 +40,39 @@ export default function Home() {
                   href="https://www.linkedin.com/in/austin-totty-90441a74/"
                   target="_blank"
                 >
-                  <Linkedin className="h-5 w-5 mr-2" />
+                  <Image
+                    src="https://www.linkedin.com/favicon.ico"
+                    alt="LinkedIn"
+                    width={20}
+                    height={20}
+                    className="w-5 h-5 mr-2 object-contain"
+                  />
                   LinkedIn
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link href="https://github.com/awtotty" target="_blank">
-                  <Github className="h-5 w-5 mr-2" />
+                  <div className="w-5 h-5 mr-2 bg-white rounded-full p-0.5 flex items-center justify-center">
+                    <Image
+                      src="https://github.com/favicon.ico"
+                      alt="GitHub"
+                      width={16}
+                      height={16}
+                      className="w-4 h-4 object-contain"
+                    />
+                  </div>
                   GitHub
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link href="https://austintotty.substack.com" target="_blank">
-                  <BookOpen className="h-5 w-5 mr-2" />
+                  <Image
+                    src="https://substack.com/favicon.ico"
+                    alt="Substack"
+                    width={20}
+                    height={20}
+                    className="w-5 h-5 mr-2 object-contain"
+                  />
                   Substack
                 </Link>
               </Button>
@@ -93,14 +113,28 @@ export default function Home() {
                             {project.githubUrl && (
                               <Button variant="outline" size="sm" asChild>
                                 <Link href={project.githubUrl} target="_blank">
-                                  <Github className="h-4 w-4" />
+                                  <div className="w-4 h-4 bg-white rounded-full p-0.5 flex items-center justify-center">
+                                    <Image
+                                      src="https://github.com/favicon.ico"
+                                      alt="GitHub"
+                                      width={12}
+                                      height={12}
+                                      className="w-3 h-3 object-contain"
+                                    />
+                                  </div>
                                 </Link>
                               </Button>
                             )}
                             {project.blogUrl && (
                               <Button variant="outline" size="sm" asChild>
                                 <Link href={project.blogUrl} target="_blank">
-                                  <BookOpen className="h-4 w-4" />
+                                  <Image
+                                    src="https://substack.com/favicon.ico"
+                                    alt="Substack"
+                                    width={12}
+                                    height={12}
+                                    className="w-4 h-4"
+                                  />
                                 </Link>
                               </Button>
                             )}

@@ -22,7 +22,7 @@ export const projects: Project[] = [
     liveUrl: "https://formulaforms.app",
     blogUrl: "https://austintotty.substack.com/p/introducing-formula-ai-powered-forms",
     hasDetailPage: false,
-    icon: "/project_images/formula_favicon.ico",
+    icon: "https://formulaforms.app/favicon.ico",
   },
   {
     id: "kenmo",
@@ -31,9 +31,8 @@ export const projects: Project[] = [
     tags: ["Nextjs", "Vercel", "Ledger"],
     liveUrl: "https://kenmo.in",
     githubUrl: "https://github.com/awtotty/kenmo-v2",
-    blogUrl: "test",
     hasDetailPage: true,
-    icon: "/project_images/kenmo_favicon.ico",
+    icon: "https://kenmo.in/favicon.ico",
     longDescription: `
       Kenmo is a comprehensive digital platform that facilitates the use of Ken Cash, a fake currency designed for educational purposes in math classrooms. The platform enables teachers to create engaging, real-world financial scenarios for students while teaching mathematical concepts.
 
