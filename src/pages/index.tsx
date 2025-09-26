@@ -9,31 +9,7 @@ import { BookOpen, ExternalLink, Github, Linkedin, Code2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-
-const projects = [
-  {
-    id: "formula",
-    title: "Formula",
-    description: "AI-powered forms that have a conversation with responders",
-    tags: ["LLM", "Nextjs", "TypeScript"],
-    liveUrl: "https://formulaforms.app",
-    blogUrl:
-      "https://austintotty.substack.com/p/introducing-formula-ai-powered-forms",
-    hasDetailPage: false,
-    icon: "/project_images/formula_favicon.ico",
-  },
-  {
-    id: "kenmo",
-    title: "Kenmo",
-    description:
-      "Digital platform for sending and receiving Ken Cash, a fake currency used in the math classroom",
-    tags: ["Nextjs", "Vercel", "Ledger"],
-    liveUrl: "https://kenmo.in",
-    githubUrl: "https://github.com/awtotty/kenmo-v2",
-    hasDetailPage: true,
-    icon: "/project_images/kenmo_favicon.ico",
-  },
-];
+import { projects } from "~/data/projects";
 
 export default function Home() {
   return (
