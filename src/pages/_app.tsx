@@ -9,7 +9,7 @@ const geist = Geist({
 
 const MyApp: AppType = ({ Component, pageProps }) => {
   return (
-    <div className={geist.className}>
+    <div className={`${geist.className} dark`}>
       <Component {...pageProps} />
     </div>
   );
