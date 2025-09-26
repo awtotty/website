@@ -91,92 +91,63 @@ export default function Home() {
                       className="hover:shadow-lg transition-shadow flex flex-col"
                     >
                       <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {project.icon ? (
-                              <Image
-                                src={project.icon}
-                                alt={`${project.title} favicon`}
-                                width={24}
-                                height={24}
-                                className="rounded-sm w-6 h-6 object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <Code2 className="h-6 w-6 text-muted-foreground" />
-                            )}
-                            {project.title}
-                          </div>
-                          <div className="flex gap-2">
-                            {project.githubUrl && (
-                              <Button variant="outline" size="sm" asChild>
-                                <Link href={project.githubUrl} target="_blank">
-                                  <div className="w-4 h-4 bg-white rounded-full p-0.5 flex items-center justify-center">
-                                    <Image
-                                      src="https://github.com/favicon.ico"
-                                      alt="GitHub"
-                                      width={12}
-                                      height={12}
-                                      className="w-3 h-3 object-contain"
-                                    />
-                                  </div>
-                                </Link>
-                              </Button>
-                            )}
-                            {project.blogUrl && (
-                              <Button variant="outline" size="sm" asChild>
-                                <Link href={project.blogUrl} target="_blank">
-                                  <Image
-                                    src="https://substack.com/favicon.ico"
-                                    alt="Substack"
-                                    width={12}
-                                    height={12}
-                                    className="w-4 h-4"
-                                  />
-                                </Link>
-                              </Button>
-                            )}
-                          </div>
+                        <CardTitle className="flex items-center gap-3">
+                          {project.icon ? (
+                            <Image
+                              src={project.icon}
+                              alt={`${project.title} favicon`}
+                              width={24}
+                              height={24}
+                              className="rounded-sm w-6 h-6 object-contain"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <Code2 className="h-6 w-6 text-muted-foreground" />
+                          )}
+                          {project.title}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="flex-1">
-                        <p className="text-muted-foreground mb-4">
+                        <p className="text-muted-foreground">
                           {project.description}
                         </p>
-                        <div className="flex flex-wrap gap-2">
-                          {project.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
                       </CardContent>
                       <CardFooter>
-                        <div className="flex gap-2 w-full">
-                          {project.hasDetailPage
-                            ? (
-                              <Button asChild className="flex-1">
+                        <div className="flex flex-col gap-2 w-full">
+                          {project.hasDetailPage && project.liveUrl ? (
+                            <>
+                              <Button variant="outline" asChild className="flex-1">
                                 <Link href={`/projects/${project.id}`}>
                                   Learn More
                                 </Link>
                               </Button>
-                            )
-                            : project.liveUrl
-                            ? (
                               <Button asChild className="flex-1">
                                 <Link href={project.liveUrl} target="_blank">
                                   <ExternalLink className="h-4 w-4 mr-2" />
                                   Check it out!
                                 </Link>
                               </Button>
-                            )
-                            : (
-                              <Button disabled className="flex-1">
-                                Coming Soon
-                              </Button>
-                            )}
+                            </>
+                          ) : project.hasDetailPage ? (
+                            <Button asChild className="flex-1">
+                              <Link href={`/projects/${project.id}`}>
+                                Learn More
+                              </Link>
+                            </Button>
+                          ) : project.liveUrl ? (
+                            <Button asChild className="flex-1">
+                              <Link href={project.liveUrl} target="_blank">
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Check it out!
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Button disabled className="flex-1">
+                              Coming Soon
+                            </Button>
+                          )}
                         </div>
                       </CardFooter>
                     </Card>
