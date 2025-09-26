@@ -1,6 +1,7 @@
 import Head from "next/head";
 import Link from "next/link";
-import { BookOpen, ExternalLink, Github, Linkedin } from "lucide-react";
+import Image from "next/image";
+import { BookOpen, ExternalLink, Github, Linkedin, Code2 } from "lucide-react";
                     <p className="text-muted-foreground text-sm mt-2">
                       Try searching for different keywords or technologies.
                     </p>
@@ -11,24 +12,26 @@ import { Badge } from "~/components/ui/badge";
 
 const projects = [
   {
-    id: "project-1",
+    id: "formula",
     title: "Formula",
-    description: "AI-powered forms that talk back to users",
+    description: "AI-powered forms that have a conversation with responders",
     tags: ["LLM", "Nextjs", "TypeScript"],
     liveUrl: "https://formulaforms.app",
     blogUrl:
       "https://austintotty.substack.com/p/introducing-formula-ai-powered-forms",
     hasDetailPage: false,
+    icon: "/project_images/formula_favicon.ico",
   },
   {
-    id: "project-2",
+    id: "kenmo",
     title: "Kenmo",
     description:
       "Digital platform for sending and receiving Ken Cash, a fake currency used in the math classroom",
     tags: ["Nextjs", "Vercel", "Ledger"],
     liveUrl: "https://kenmo.in",
     githubUrl: "https://github.com/awtotty/kenmo-v2",
-    hasDetailPage: false,
+    hasDetailPage: true,
+    icon: "/project_images/kenmo_favicon.ico",
   },
 ];
 
@@ -93,7 +96,23 @@ export default function Home() {
                     >
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">
-                          {project.title}
+                          <div className="flex items-center gap-3">
+                            {project.icon ? (
+                              <Image
+                                src={project.icon}
+                                alt={`${project.title} favicon`}
+                                width={24}
+                                height={24}
+                                className="rounded-sm"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <Code2 className="h-6 w-6 text-muted-foreground" />
+                            )}
+                            {project.title}
+                          </div>
                           <div className="flex gap-2">
                             {project.githubUrl && (
                               <Button variant="outline" size="sm" asChild>
