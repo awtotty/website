@@ -8,7 +8,6 @@ import { ExternalLink, Code2 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
 import { projects } from "~/data/projects";
 
 export default function Home() {
@@ -30,7 +29,7 @@ export default function Home() {
               Austin Totty
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Here are some things I've built.
+              Here are some things I`&apos;`ve built.
             </p>
 
             {/* Social Links */}
