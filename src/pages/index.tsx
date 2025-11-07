@@ -2,9 +2,9 @@ import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
 import { ExternalLink, Code2 } from "lucide-react";
-                    <p className="text-muted-foreground text-sm mt-2">
-                      Try searching for different keywords or technologies.
-                    </p>
+<p className="text-muted-foreground text-sm mt-2">
+  Try searching for different keywords or technologies.
+</p>
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
@@ -30,7 +30,7 @@ export default function Home() {
               Austin Totty
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              I like building things. You can see some of those things below.
+              Here are some things I've built.
             </p>
 
             {/* Social Links */}
