@@ -124,28 +124,26 @@ export default function ProjectDetail() {
           </div>
 
           {/* Project Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6">
             {/* Main Content */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader />
-                <CardContent>
-                  <CardTitle className="mb-4">About This Project</CardTitle>
-                  <div className="prose prose-gray max-w-none">
-                    {project.longDescription?.split('\n').map((paragraph, index) => (
-                      paragraph.trim() && (
-                        <p key={index} className="mb-4 text-muted-foreground leading-relaxed">
-                          {paragraph.trim()}
-                        </p>
-                      )
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <Card>
+              <CardHeader />
+              <CardContent>
+                <CardTitle className="mb-4">About This Project</CardTitle>
+                <div className="prose prose-gray max-w-none">
+                  {project.longDescription?.split('\n').map((paragraph, index) => (
+                    paragraph.trim() && (
+                      <p key={index} className="mb-4 text-muted-foreground leading-relaxed">
+                        {paragraph.trim()}
+                      </p>
+                    )
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Sidebar */}
-            <div className="space-y-6">
+            <div className="flex flex-col gap-6 lg:w-[320px]">
               {/* Technologies Used */}
               <Card>
                 <CardHeader />

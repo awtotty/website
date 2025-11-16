@@ -87,16 +87,14 @@ export default function Home() {
             </h2>
 
             {/* Projects Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
               {projects.length > 0
                 ? (
-                  projects.map((project) => (
-                    <Card
-                      key={project.id}
-                      className="flex flex-col backdrop-blur-sm"
-                    >
-                      <CardHeader />
-                      <CardContent className="flex-1">
+                  projects.map((project) => {
+                    return (
+                      <Card key={project.id} className="flex flex-col backdrop-blur-sm">
+                        <CardHeader />
+                        <CardContent className="flex-1">
                         <CardTitle className="flex items-center gap-3 mb-4">
                           {project.icon ? (
                             <Image
@@ -155,7 +153,8 @@ export default function Home() {
                         </div>
                       </CardFooter>
                     </Card>
-                  ))
+                    );
+                  })
                 )
                 : (
                   <div className="col-span-full text-center py-12">
