@@ -128,10 +128,9 @@ export default function ProjectDetail() {
             {/* Main Content */}
             <div className="lg:col-span-2">
               <Card>
-                <CardHeader>
-                  <CardTitle>About This Project</CardTitle>
-                </CardHeader>
+                <CardHeader />
                 <CardContent>
+                  <CardTitle className="mb-4">About This Project</CardTitle>
                   <div className="prose prose-gray max-w-none">
                     {project.longDescription?.split('\n').map((paragraph, index) => (
                       paragraph.trim() && (
@@ -149,10 +148,9 @@ export default function ProjectDetail() {
             <div className="space-y-6">
               {/* Technologies Used */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Technologies Used</CardTitle>
-                </CardHeader>
+                <CardHeader />
                 <CardContent>
+                  <CardTitle className="mb-4">Technologies Used</CardTitle>
                   <ul className="space-y-2">
                     {project.technologies?.map((tech, index) => (
                       <li key={index} className="text-sm text-muted-foreground">
@@ -165,10 +163,9 @@ export default function ProjectDetail() {
 
               {/* Key Challenges */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Key Challenges</CardTitle>
-                </CardHeader>
+                <CardHeader />
                 <CardContent>
+                  <CardTitle className="mb-4">Key Challenges</CardTitle>
                   <ul className="space-y-2">
                     {project.challenges?.map((challenge, index) => (
                       <li key={index} className="text-sm text-muted-foreground">

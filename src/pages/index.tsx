@@ -95,8 +95,9 @@ export default function Home() {
                       key={project.id}
                       className="flex flex-col backdrop-blur-sm"
                     >
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-3">
+                      <CardHeader />
+                      <CardContent className="flex-1">
+                        <CardTitle className="flex items-center gap-3 mb-4">
                           {project.icon ? (
                             <Image
                               src={project.icon}
@@ -113,8 +114,6 @@ export default function Home() {
                           )}
                           {project.title}
                         </CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex-1">
                         <p className="text-muted-foreground">
                           {project.description}
                         </p>
