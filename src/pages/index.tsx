@@ -2,13 +2,11 @@ import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
 import { ExternalLink, Code2 } from "lucide-react";
-<p className="text-muted-foreground text-sm mt-2">
-  Try searching for different keywords or technologies.
-</p>
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 import { projects } from "~/data/projects";
+import { ColorCycleButton } from "~/components/ColorCycleButton";
 
 export default function Home() {
   return (
@@ -21,6 +19,7 @@ export default function Home() {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+      <ColorCycleButton />
       <main className="min-h-screen bg-background relative overflow-hidden">
         {/* Decorative Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">

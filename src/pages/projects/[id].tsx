@@ -8,6 +8,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { getProjectById } from "~/data/projects";
+import { ColorCycleButton } from "~/components/ColorCycleButton";
 
 export default function ProjectDetail() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function ProjectDetail() {
         <Head>
           <title>Project Not Found - Austin Totty</title>
         </Head>
+        <ColorCycleButton />
         <main className="min-h-screen bg-background">
           <div className="mx-auto max-w-4xl px-4 py-16">
             <div className="text-center">
@@ -47,6 +49,7 @@ export default function ProjectDetail() {
         <meta name="description" content={project.description} />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+      <ColorCycleButton />
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-4xl px-4 py-16">
           {/* Navigation */}

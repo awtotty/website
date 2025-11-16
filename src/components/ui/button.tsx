@@ -9,13 +9,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground border border-foreground shadow-[4px_4px_0px_0px_currentColor] hover:shadow-[0px_0px_0px_0px_currentColor] hover:translate-x-[4px] hover:translate-y-[4px] active:shadow-[0px_0px_0px_0px_currentColor] active:translate-x-[4px] active:translate-y-[4px]",
+        default: "bg-primary text-primary-foreground border border-foreground shadow-[4px_4px_0px_0px_rgb(0,0,0)] hover:shadow-[0px_0px_0px_0px_rgb(0,0,0)] hover:translate-x-[4px] hover:translate-y-[4px] active:shadow-[0px_0px_0px_0px_rgb(0,0,0)] active:translate-x-[4px] active:translate-y-[4px]",
         destructive:
-          "bg-destructive text-white border border-foreground shadow-[4px_4px_0px_0px_currentColor] hover:shadow-[0px_0px_0px_0px_currentColor] hover:translate-x-[4px] hover:translate-y-[4px] active:shadow-[0px_0px_0px_0px_currentColor] active:translate-x-[4px] active:translate-y-[4px]",
+          "bg-destructive text-white border border-foreground shadow-[4px_4px_0px_0px_rgb(0,0,0)] hover:shadow-[0px_0px_0px_0px_rgb(0,0,0)] hover:translate-x-[4px] hover:translate-y-[4px] active:shadow-[0px_0px_0px_0px_rgb(0,0,0)] active:translate-x-[4px] active:translate-y-[4px]",
         outline:
-          "border border-foreground bg-background shadow-[4px_4px_0px_0px_currentColor] hover:shadow-[0px_0px_0px_0px_currentColor] hover:translate-x-[4px] hover:translate-y-[4px] active:shadow-[0px_0px_0px_0px_currentColor] active:translate-x-[4px] active:translate-y-[4px]",
+          "border border-foreground bg-background shadow-[4px_4px_0px_0px_rgb(0,0,0)] hover:shadow-[0px_0px_0px_0px_rgb(0,0,0)] hover:translate-x-[4px] hover:translate-y-[4px] active:shadow-[0px_0px_0px_0px_rgb(0,0,0)] active:translate-x-[4px] active:translate-y-[4px]",
         secondary:
-          "bg-secondary text-secondary-foreground border border-foreground shadow-[4px_4px_0px_0px_currentColor] hover:shadow-[0px_0px_0px_0px_currentColor] hover:translate-x-[4px] hover:translate-y-[4px] active:shadow-[0px_0px_0px_0px_currentColor] active:translate-x-[4px] active:translate-y-[4px]",
+          "bg-secondary text-secondary-foreground border border-foreground shadow-[4px_4px_0px_0px_rgb(0,0,0)] hover:shadow-[0px_0px_0px_0px_rgb(0,0,0)] hover:translate-x-[4px] hover:translate-y-[4px] active:shadow-[0px_0px_0px_0px_rgb(0,0,0)] active:translate-x-[4px] active:translate-y-[4px]",
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
