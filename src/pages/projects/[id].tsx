@@ -51,7 +51,7 @@ export default function ProjectDetail() {
         <div className="mx-auto max-w-4xl px-4 py-16">
           {/* Navigation */}
           <div className="mb-8">
-            <Button variant="ghost" asChild>
+            <Button variant="outline" asChild>
               <Link href="/">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
