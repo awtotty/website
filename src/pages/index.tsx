@@ -29,7 +29,7 @@ export default function Home() {
               Austin Totty
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Here are some things I`&apos;`ve built.
+              Here are some things I&apos;ve built.
             </p>
 
             {/* Social Links */}
