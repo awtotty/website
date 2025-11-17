@@ -8,6 +8,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { getProjectById } from "~/data/projects";
+import { ColorCycleButton } from "~/components/ColorCycleButton";
 
 export default function ProjectDetail() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function ProjectDetail() {
         <Head>
           <title>Project Not Found - Austin Totty</title>
         </Head>
+        <ColorCycleButton />
         <main className="min-h-screen bg-background">
           <div className="mx-auto max-w-4xl px-4 py-16">
             <div className="text-center">
@@ -47,11 +49,12 @@ export default function ProjectDetail() {
         <meta name="description" content={project.description} />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+      <ColorCycleButton />
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-4xl px-4 py-16">
           {/* Navigation */}
           <div className="mb-8">
-            <Button variant="ghost" asChild>
+            <Button variant="outline" asChild>
               <Link href="/">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
@@ -121,35 +124,31 @@ export default function ProjectDetail() {
           </div>
 
           {/* Project Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6">
             {/* Main Content */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>About This Project</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose prose-gray max-w-none">
-                    {project.longDescription?.split('\n').map((paragraph, index) => (
-                      paragraph.trim() && (
-                        <p key={index} className="mb-4 text-muted-foreground leading-relaxed">
-                          {paragraph.trim()}
-                        </p>
-                      )
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <Card>
+              <CardHeader />
+              <CardContent>
+                <CardTitle className="mb-4">About This Project</CardTitle>
+                <div className="prose prose-gray max-w-none">
+                  {project.longDescription?.split('\n').map((paragraph, index) => (
+                    paragraph.trim() && (
+                      <p key={index} className="mb-4 text-muted-foreground leading-relaxed">
+                        {paragraph.trim()}
+                      </p>
+                    )
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Sidebar */}
-            <div className="space-y-6">
+            <div className="flex flex-col gap-6 lg:w-[320px]">
               {/* Technologies Used */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Technologies Used</CardTitle>
-                </CardHeader>
+                <CardHeader />
                 <CardContent>
+                  <CardTitle className="mb-4">Technologies Used</CardTitle>
                   <ul className="space-y-2">
                     {project.technologies?.map((tech, index) => (
                       <li key={index} className="text-sm text-muted-foreground">
@@ -162,10 +161,9 @@ export default function ProjectDetail() {
 
               {/* Key Challenges */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Key Challenges</CardTitle>
-                </CardHeader>
+                <CardHeader />
                 <CardContent>
+                  <CardTitle className="mb-4">Key Challenges</CardTitle>
                   <ul className="space-y-2">
                     {project.challenges?.map((challenge, index) => (
                       <li key={index} className="text-sm text-muted-foreground">

@@ -2,13 +2,11 @@ import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
 import { ExternalLink, Code2 } from "lucide-react";
-<p className="text-muted-foreground text-sm mt-2">
-  Try searching for different keywords or technologies.
-</p>
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 import { projects } from "~/data/projects";
+import { ColorCycleButton } from "~/components/ColorCycleButton";
 
 export default function Home() {
   return (
@@ -21,17 +19,21 @@ export default function Home() {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="min-h-screen bg-background">
-        <div className="mx-auto max-w-4xl px-4 py-16">
+      <ColorCycleButton />
+      <main className="min-h-screen bg-background relative overflow-hidden">
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 -left-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50"></div>
+          <div className="absolute top-40 -right-20 w-80 h-80 bg-secondary/20 rounded-full blur-3xl opacity-50"></div>
+          <div className="absolute bottom-20 left-1/3 w-72 h-72 bg-accent/20 rounded-full blur-3xl opacity-50"></div>
+        </div>
+
+        <div className="mx-auto max-w-4xl px-4 py-16 relative z-10">
           {/* Hero Section */}
           <section className="text-center mb-16">
-            <h1 className="text-4xl font-bold tracking-tight mb-4">
+            <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-6 leading-tight pb-2">
               Austin Totty
             </h1>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Here are some things I&apos;ve built.
-            </p>
-
             {/* Social Links */}
             <div className="flex justify-center gap-4 mb-12">
               <Button variant="outline" size="lg" asChild>
@@ -80,17 +82,20 @@ export default function Home() {
 
           {/* Projects Section */}
           <section>
+            <h2 className="text-xl text-center md:text-2xl text-foreground mb-8 max-w-2xl mx-auto">
+              Here are some things I&apos;ve built
+            </h2>
+
             {/* Projects Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
               {projects.length > 0
                 ? (
-                  projects.map((project) => (
-                    <Card
-                      key={project.id}
-                      className="hover:shadow-lg transition-shadow flex flex-col"
-                    >
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-3">
+                  projects.map((project) => {
+                    return (
+                      <Card key={project.id} className="flex flex-col backdrop-blur-sm">
+                        <CardHeader />
+                        <CardContent className="flex-1">
+                        <CardTitle className="flex items-center gap-3 mb-4">
                           {project.icon ? (
                             <Image
                               src={project.icon}
@@ -107,8 +112,6 @@ export default function Home() {
                           )}
                           {project.title}
                         </CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex-1">
                         <p className="text-muted-foreground">
                           {project.description}
                         </p>
@@ -150,7 +153,8 @@ export default function Home() {
                         </div>
                       </CardFooter>
                     </Card>
-                  ))
+                    );
+                  })
                 )
                 : (
                   <div className="col-span-full text-center py-12">
