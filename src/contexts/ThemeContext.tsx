@@ -52,7 +52,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const themes = Object.keys(colorThemes) as ColorTheme[];
     const currentIndex = themes.indexOf(currentTheme);
     const nextIndex = (currentIndex + 1) % themes.length;
-    setCurrentTheme(themes[nextIndex]);
+    const nextTheme = themes[nextIndex];
+    if (nextTheme) {
+      setCurrentTheme(nextTheme);
+    }
   };
 
   return (
