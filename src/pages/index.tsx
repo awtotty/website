@@ -1,12 +1,11 @@
 import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
-import { ExternalLink, Code2 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 import { projects } from "~/data/projects";
 import { ColorCycleButton } from "~/components/ColorCycleButton";
+import { ExpandableProjectCard } from "~/components/ExpandableProjectCard";
 
 export default function Home() {
   return (
@@ -90,71 +89,9 @@ export default function Home() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
               {projects.length > 0
                 ? (
-                  projects.map((project) => {
-                    return (
-                      <Card key={project.id} className="flex flex-col backdrop-blur-sm">
-                        <CardHeader />
-                        <CardContent className="flex-1">
-                        <CardTitle className="flex items-center gap-3 mb-4">
-                          {project.icon ? (
-                            <Image
-                              src={project.icon}
-                              alt={`${project.title} favicon`}
-                              width={24}
-                              height={24}
-                              className="rounded-sm w-6 h-6 object-contain"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <Code2 className="h-6 w-6 text-muted-foreground" />
-                          )}
-                          {project.title}
-                        </CardTitle>
-                        <p className="text-muted-foreground">
-                          {project.description}
-                        </p>
-                      </CardContent>
-                      <CardFooter>
-                        <div className="flex flex-col gap-2 w-full">
-                          {project.hasDetailPage && project.liveUrl ? (
-                            <>
-                              <Button variant="outline" asChild className="flex-1">
-                                <Link href={`/projects/${project.id}`}>
-                                  Learn More
-                                </Link>
-                              </Button>
-                              <Button asChild className="flex-1">
-                                <Link href={project.liveUrl} target="_blank">
-                                  <ExternalLink className="h-4 w-4 mr-2" />
-                                  Check it out!
-                                </Link>
-                              </Button>
-                            </>
-                          ) : project.hasDetailPage ? (
-                            <Button asChild className="flex-1">
-                              <Link href={`/projects/${project.id}`}>
-                                Learn More
-                              </Link>
-                            </Button>
-                          ) : project.liveUrl ? (
-                            <Button asChild className="flex-1">
-                              <Link href={project.liveUrl} target="_blank">
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                Check it out!
-                              </Link>
-                            </Button>
-                          ) : (
-                            <Button disabled className="flex-1">
-                              Coming Soon
-                            </Button>
-                          )}
-                        </div>
-                      </CardFooter>
-                    </Card>
-                    );
-                  })
+                  projects.map((project) => (
+                    <ExpandableProjectCard key={project.id} project={project} />
+                  ))
                 )
                 : (
                   <div className="col-span-full text-center py-12">
