@@ -6,7 +6,6 @@ export interface Project {
   liveUrl?: string;
   githubUrl?: string;
   blogUrl?: string;
-  hasDetailPage: boolean;
   icon?: string;
   longDescription?: string;
   technologies?: string[];
@@ -21,7 +20,6 @@ export const projects: Project[] = [
     tags: ["LLM", "Nextjs", "TypeScript"],
     liveUrl: "https://formulaforms.app",
     blogUrl: "https://austintotty.substack.com/p/introducing-formula-ai-powered-forms",
-    hasDetailPage: true,
     icon: "https://formulaforms.app/favicon.ico",
     longDescription: `
       Formula Forms is an AI-powered form creation platform that revolutionizes data collection through intelligent, conversational form experiences. Unlike traditional static forms, Formula creates dynamic questionnaires that adapt and respond to users in real-time.
@@ -60,7 +58,6 @@ export const projects: Project[] = [
     tags: ["Nextjs", "Vercel", "Ledger"],
     liveUrl: "https://kenmo.in",
     githubUrl: "https://github.com/awtotty/kenmo-v2",
-    hasDetailPage: true,
     icon: "https://kenmo.in/favicon.ico",
     longDescription: `
       Kenmo is a comprehensive digital platform that facilitates the use of Ken Cash, a fake currency designed for educational purposes in math classrooms. The platform enables teachers to create engaging, real-world financial scenarios for students while teaching mathematical concepts.
@@ -93,8 +90,4 @@ export const projects: Project[] = [
 
 export const getProjectById = (id: string): Project | undefined => {
   return projects.find(project => project.id === id);
-};
-
-export const getProjectsWithDetailPages = (): Project[] => {
-  return projects.filter(project => project.hasDetailPage);
 };

@@ -52,7 +52,7 @@ export function ExpandableProjectCard({ project }: ExpandableProjectCardProps) {
         )}
 
         {/* Expandable Content */}
-        {project.hasDetailPage && (
+        {(project.longDescription ?? project.technologies ?? project.challenges) && (
           <div
             className={`overflow-hidden transition-all duration-300 ${
               isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
@@ -152,7 +152,7 @@ export function ExpandableProjectCard({ project }: ExpandableProjectCardProps) {
           </div>
 
           {/* Expand/Collapse Button */}
-          {project.hasDetailPage && (
+          {(project.longDescription ?? project.technologies ?? project.challenges) && (
             <Button
               variant="outline"
               onClick={() => setIsExpanded(!isExpanded)}
