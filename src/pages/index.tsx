@@ -31,7 +31,7 @@ export default function Home() {
           {/* Hero Section */}
           <section className="text-center mb-16">
             <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-6 leading-tight pb-2">
-              Austin Totty
+              MY STUFF
             </h1>
             {/* Social Links */}
             <div className="flex justify-center gap-4 mb-12">
