@@ -48,7 +48,7 @@ class VimCursor {
     el.id = "vim-cursor";
     el.setAttribute("aria-hidden", "true");
     el.style.cssText = `
-      position: fixed;
+      position: absolute;
       pointer-events: none;
       z-index: 9999;
       display: none;
@@ -322,28 +322,14 @@ class VimCursor {
     const charWidth = this.getCharWidth();
 
     if (rect) {
-      this.cursorEl.style.left = rect.left + "px";
-      this.cursorEl.style.top = rect.top + "px";
+      this.cursorEl.style.left = (rect.left + window.scrollX) + "px";
+      this.cursorEl.style.top = (rect.top + window.scrollY) + "px";
       this.cursorEl.style.width = Math.max(charWidth, rect.width) + "px";
       this.cursorEl.style.height = rect.height + "px";
     }
 
     this.resetBlink();
     this.updateHover();
-    this.scrollIntoView();
-  }
-
-  scrollIntoView() {
-    const rect = this.getCursorRect();
-    if (!rect) return;
-
-    // If cursor is off-screen, scroll to it
-    if (rect.top < 0 || rect.bottom > window.innerHeight) {
-      window.scrollBy({
-        top: rect.top - window.innerHeight / 3,
-        behavior: "smooth",
-      });
-    }
   }
 
   // --- Hover state simulation ---
