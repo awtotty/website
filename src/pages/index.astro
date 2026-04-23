@@ -9,7 +9,7 @@ const posts = await getCollection("blog");
 const sortedPosts = posts.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 
 const formatDate = (d: Date) =>
-  d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 ---
 
 <Base title="Austin Totty">
@@ -18,7 +18,7 @@ const formatDate = (d: Date) =>
   <span class="spacer"></span>
 
   <p class="mb-0">CONTACT: <a href="mailto:hi@austin-totty.com">hi@austin-totty.com</a></p>
-  <p>LOCATION: USA</p>
+  <p>LOCATION: Los Angeles, USA</p>
 
   <span class="spacer"></span>
 
@@ -42,7 +42,7 @@ const formatDate = (d: Date) =>
   <ul>
     {sortedPosts.map((post) => (
       <li>
-        [{post.data.title}](<a href={`/blog/${post.id}`}>{`/blog/${post.id}`}</a>) ... {formatDate(post.data.date)}
+        {post.data.title} ({formatDate(post.data.date)}) ... <a class="button" href={`/blog/${post.id}`}>read</a>
       </li>
     ))}
   </ul>
