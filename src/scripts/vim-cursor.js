@@ -509,17 +509,17 @@ class VimCursor {
     const currentY = currentRect.top;
 
     for (let ni = this.cursorNodeIndex - 1; ni >= 0; ni--) {
+      const node = this.textNodes[ni];
+      const text = node.textContent;
+      if (text.length === 0) continue;
       const r = this.getCharRect(ni, 0);
       if (!r) continue;
-      // Same visual line = top Y within tolerance
-      if (r.height > 0 && Math.abs(r.top - currentY) > 2) break;
-      // If height is 0, we can't check Y reliably — try the node anyway
-      const text = this.textNodes[ni].textContent;
-      if (text.length > 0) {
-        this.cursorNodeIndex = ni;
-        this.cursorCharIndex = text.length - 1;
-        return;
-      }
+      // Different visual line = top Y differs by more than half a line height
+      // Use generous tolerance to handle subpixel differences between inline elements
+      if (r.height > 0 && Math.abs(r.top - currentY) > Math.max(r.height * 0.5, 5)) break;
+      this.cursorNodeIndex = ni;
+      this.cursorCharIndex = text.length - 1;
+      return;
     }
   }
 
@@ -530,15 +530,25 @@ class VimCursor {
     const currentY = currentRect.top;
 
     for (let ni = this.cursorNodeIndex + 1; ni < this.textNodes.length; ni++) {
-      const r = this.getCharRect(ni, 0);
-      if (!r) continue;
-      if (r.height > 0 && Math.abs(r.top - currentY) > 2) break;
-      const text = this.textNodes[ni].textContent;
-      if (text.length > 0) {
-        this.cursorNodeIndex = ni;
-        this.cursorCharIndex = 0;
-        return;
+      const node = this.textNodes[ni];
+      const text = node.textContent;
+      if (text.length === 0) continue;
+      // Check if this node is on the same visual line as the cursor.
+      // Use char at offset 0 as a proxy. For nodes that start with whitespace,
+      // find the first non-whitespace character to get a reliable rect.
+      let r = this.getCharRect(ni, 0);
+      if (!r || r.width === 0) {
+        // Char 0 might be whitespace with zero width; try first non-space
+        for (let ci = 0; ci < text.length && ci < 20; ci++) {
+          r = this.getCharRect(ni, ci);
+          if (r && r.width > 0) break;
+        }
       }
+      if (!r) continue;
+      if (r.height > 0 && Math.abs(r.top - currentY) > Math.max(r.height * 0.5, 5)) break;
+      this.cursorNodeIndex = ni;
+      this.cursorCharIndex = 0;
+      return;
     }
   }
 
