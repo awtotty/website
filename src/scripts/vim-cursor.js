@@ -510,9 +510,10 @@ class VimCursor {
 
     for (let ni = this.cursorNodeIndex - 1; ni >= 0; ni--) {
       const r = this.getCharRect(ni, 0);
-      if (!r || r.height === 0) continue;
-      // Same visual line = top Y within 2px tolerance
-      if (Math.abs(r.top - currentY) > 2) break;
+      if (!r) continue;
+      // Same visual line = top Y within tolerance
+      if (r.height > 0 && Math.abs(r.top - currentY) > 2) break;
+      // If height is 0, we can't check Y reliably — try the node anyway
       const text = this.textNodes[ni].textContent;
       if (text.length > 0) {
         this.cursorNodeIndex = ni;
@@ -530,9 +531,8 @@ class VimCursor {
 
     for (let ni = this.cursorNodeIndex + 1; ni < this.textNodes.length; ni++) {
       const r = this.getCharRect(ni, 0);
-      if (!r || r.height === 0) continue;
-      // Same visual line = top Y within 2px tolerance
-      if (Math.abs(r.top - currentY) > 2) break;
+      if (!r) continue;
+      if (r.height > 0 && Math.abs(r.top - currentY) > 2) break;
       const text = this.textNodes[ni].textContent;
       if (text.length > 0) {
         this.cursorNodeIndex = ni;
