@@ -507,14 +507,24 @@ class VimCursor {
     const currentRect = this.getCursorRect();
     if (!currentRect) return;
     const currentY = currentRect.top;
+    const lineHeight = currentRect.height || 20;
 
     for (let ni = this.cursorNodeIndex - 1; ni >= 0; ni--) {
       const node = this.textNodes[ni];
       const text = node.textContent;
       if (text.length === 0) continue;
-      const r = this.getCharRect(ni, 0);
+
+      // Find a visible character to check Y position
+      let r = null;
+      for (let ci = 0; ci < Math.min(text.length, 20); ci++) {
+        r = this.getCharRect(ni, ci);
+        if (r && r.width > 0 && r.height > 0) break;
+        r = null;
+      }
+
       if (!r) continue;
-      if (r.height > 0 && Math.abs(r.top - currentY) > Math.max(r.height * 0.5, 5)) break;
+      if (Math.abs(r.top - currentY) > Math.max(lineHeight * 0.5, 5)) break;
+
       this.cursorNodeIndex = ni;
       this.cursorCharIndex = text.length - 1;
       return;
