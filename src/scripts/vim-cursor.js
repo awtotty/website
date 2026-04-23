@@ -478,13 +478,12 @@ class VimCursor {
 
   moveLeft() {
     this.goalX = null;
-    const node = this.textNodes[this.cursorNodeIndex];
-    if (!node) return;
-
     if (this.cursorCharIndex > 0) {
       this.cursorCharIndex--;
+    } else {
+      // Move to end of previous text node, but only if it's on the same visual line
+      this.moveToPrevNodeOnSameLine();
     }
-    // Don't wrap to previous line — stop at start of current text node
     this.updateCursor();
   }
 
@@ -496,9 +495,51 @@ class VimCursor {
     const text = node.textContent;
     if (this.cursorCharIndex < text.length - 1) {
       this.cursorCharIndex++;
+    } else {
+      // Move to start of next text node, but only if it's on the same visual line
+      this.moveToNextNodeOnSameLine();
     }
-    // Don't wrap to next line — stop at end of current text node
     this.updateCursor();
+  }
+
+  /** Move to end of previous text node if it's on the same visual line. */
+  moveToPrevNodeOnSameLine() {
+    const currentRect = this.getCursorRect();
+    if (!currentRect) return;
+    const currentY = currentRect.top;
+
+    for (let ni = this.cursorNodeIndex - 1; ni >= 0; ni--) {
+      const r = this.getCharRect(ni, 0);
+      if (!r || r.height === 0) continue;
+      // Same visual line = top Y within 2px tolerance
+      if (Math.abs(r.top - currentY) > 2) break;
+      const text = this.textNodes[ni].textContent;
+      if (text.length > 0) {
+        this.cursorNodeIndex = ni;
+        this.cursorCharIndex = text.length - 1;
+        return;
+      }
+    }
+  }
+
+  /** Move to start of next text node if it's on the same visual line. */
+  moveToNextNodeOnSameLine() {
+    const currentRect = this.getCursorRect();
+    if (!currentRect) return;
+    const currentY = currentRect.top;
+
+    for (let ni = this.cursorNodeIndex + 1; ni < this.textNodes.length; ni++) {
+      const r = this.getCharRect(ni, 0);
+      if (!r || r.height === 0) continue;
+      // Same visual line = top Y within 2px tolerance
+      if (Math.abs(r.top - currentY) > 2) break;
+      const text = this.textNodes[ni].textContent;
+      if (text.length > 0) {
+        this.cursorNodeIndex = ni;
+        this.cursorCharIndex = 0;
+        return;
+      }
+    }
   }
 
   /** Get rect for a character at (nodeIndex, charIndex) in our textNodes array. */
