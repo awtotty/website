@@ -373,6 +373,13 @@ class VimCursor {
       this.cursorEl.style.top = (rect.top + window.scrollY) + "px";
       this.cursorEl.style.width = Math.max(charWidth, rect.width) + "px";
       this.cursorEl.style.height = rect.height + "px";
+
+      // Scroll cursor into view if it's off-screen
+      if (rect.top < 0) {
+        window.scrollBy({ top: rect.top - 40, behavior: "smooth" });
+      } else if (rect.bottom > window.innerHeight) {
+        window.scrollBy({ top: rect.bottom - window.innerHeight + 40, behavior: "smooth" });
+      }
     }
 
     this.resetBlink();
