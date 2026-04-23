@@ -520,14 +520,17 @@ class VimCursor {
   }
 
   /**
-   * In text node ni, find the character whose Y is closest to targetY
-   * and whose X is closest to goalX. Handles multi-line text nodes.
+   * In text node ni, find the character closest to goalX on the
+   * visual line nearest to targetY.
    */
   findXInNode(ni, goalX, targetY) {
     const node = this.textNodes[ni];
     if (!node || !node.textContent) return 0;
     const len = node.textContent.length;
 
+    // First pass: find the best character considering both X and Y proximity.
+    // If targetY is inside this node's range, prefer chars on that line.
+    // If not, fall back to just finding the closest X on the nearest line.
     let bestCi = 0;
     let bestDist = Infinity;
     const step = len > 200 ? Math.ceil(len / 200) : 1;
@@ -536,12 +539,12 @@ class VimCursor {
       const r = this.getCharRect(ni, ci);
       if (!r || r.height === 0) continue;
 
-      // Only consider characters on the right visual line
       const yDist = Math.abs(r.top - targetY);
-      if (yDist > r.height * 2) continue;
-
       const xDist = Math.abs(r.left + r.width / 2 - goalX);
-      const dist = yDist * 5 + xDist;
+      // Weight vertical alignment much more heavily than horizontal,
+      // but don't hard-filter — we want the best available char even
+      // if no char is exactly on the target Y line.
+      const dist = yDist * 10 + xDist;
       if (dist < bestDist) {
         bestDist = dist;
         bestCi = ci;
@@ -579,19 +582,22 @@ class VimCursor {
       }
     }
 
-    // Strategy 2: walk text nodes checking each first character's Y position
-    // This handles the case where caretRangeFromPoint can't find anything
-    // (e.g., target line is off-screen)
+    // Strategy 2: walk text nodes checking each first character's Y position.
+    // Start from cursorNodeIndex (not +1) so we also check if the CURRENT node
+    // wraps to the next line — but skip self-match.
     const tolerance = 4;
-    for (let ni = this.cursorNodeIndex + 1; ni < this.textNodes.length; ni++) {
+    for (let ni = this.cursorNodeIndex; ni < this.textNodes.length; ni++) {
       const node = this.textNodes[ni];
       if (!node || !node.textContent) continue;
       const firstRect = this.getCharRect(ni, 0);
       if (!firstRect || firstRect.height === 0) continue;
-      // Found a node whose first char is below currentY
+      // Is this node's first char below currentY? (i.e., on a different line)
       if (firstRect.top <= currentY + tolerance) continue;
 
+      // Don't pick a char identical to where we already are
       const ci = this.findXInNode(ni, goalX, firstRect.top);
+      if (ni === this.cursorNodeIndex && ci === this.cursorCharIndex) continue;
+
       this.cursorNodeIndex = ni;
       this.cursorCharIndex = ci;
       this.updateCursor();
@@ -639,21 +645,23 @@ class VimCursor {
       }
     }
 
-    // Strategy 2: walk text nodes backward
+    // Strategy 2: walk text nodes backward.
+    // Start from cursorNodeIndex (not -1) to also check if the CURRENT node
+    // wraps to a previous line.
     const tolerance = 4;
-    for (let ni = this.cursorNodeIndex - 1; ni >= 0; ni--) {
+    for (let ni = this.cursorNodeIndex; ni >= 0; ni--) {
       const node = this.textNodes[ni];
       if (!node || !node.textContent) continue;
-      // For multi-line nodes, check the LAST char to find this node's bottom Y
       const len = node.textContent.length;
       const lastRect = this.getCharRect(ni, Math.max(0, len - 1));
       if (!lastRect || lastRect.height === 0) continue;
-      // Found a node whose last char is above currentY
+      // Is any part of this node above currentY?
       if (lastRect.bottom >= currentY - tolerance) continue;
 
-      // Find the best character on the line just above currentY
-      const targetLineY = lastRect.top;
-      const ci = this.findXInNode(ni, goalX, currentY - tolerance);
+      // Don't pick a char identical to where we already are
+      const ci = this.findXInNode(ni, goalX, lastRect.top);
+      if (ni === this.cursorNodeIndex && ci === this.cursorCharIndex) continue;
+
       this.cursorNodeIndex = ni;
       this.cursorCharIndex = ci;
       this.updateCursor();
