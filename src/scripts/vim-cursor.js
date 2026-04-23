@@ -374,11 +374,13 @@ class VimCursor {
       this.cursorEl.style.width = Math.max(charWidth, rect.width) + "px";
       this.cursorEl.style.height = rect.height + "px";
 
-      // Scroll cursor into view if it's off-screen
-      if (rect.top < 0) {
-        window.scrollBy({ top: rect.top - 40, behavior: "smooth" });
-      } else if (rect.bottom > window.innerHeight) {
-        window.scrollBy({ top: rect.bottom - window.innerHeight + 40, behavior: "smooth" });
+      // Scroll to keep at least 4 lines of context above/below cursor
+      const lineHeight = rect.height || 20;
+      const scrolloff = lineHeight * 4;
+      if (rect.top < scrolloff) {
+        window.scrollBy({ top: rect.top - scrolloff, behavior: "smooth" });
+      } else if (rect.bottom > window.innerHeight - scrolloff) {
+        window.scrollBy({ top: rect.bottom - window.innerHeight + scrolloff, behavior: "smooth" });
       }
     }
 
