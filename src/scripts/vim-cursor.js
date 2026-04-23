@@ -483,76 +483,6 @@ class VimCursor {
     range.setEnd(node, ci + 1);
     return range.getBoundingClientRect();
   }
-
-  /** Resolve a viewport position to a cursor position in our textNodes. */
-  resolveCaretPosition(x, y) {
-    const clampX = Math.max(1, Math.min(x, window.innerWidth - 2));
-    const clampY = Math.max(1, Math.min(y, window.innerHeight - 2));
-
-    let targetNode = null;
-    let targetOffset = 0;
-
-    if (document.caretRangeFromPoint) {
-      const range = document.caretRangeFromPoint(clampX, clampY);
-      if (range) {
-        targetNode = range.startContainer;
-        targetOffset = range.startOffset;
-      }
-    } else if (document.caretPositionFromPoint) {
-      const pos = document.caretPositionFromPoint(clampX, clampY);
-      if (pos) {
-        targetNode = pos.offsetNode;
-        targetOffset = pos.offset;
-      }
-    }
-
-    if (!targetNode) return null;
-
-    if (targetNode.nodeType === Node.TEXT_NODE) {
-      const idx = this.textNodes.indexOf(targetNode);
-      if (idx >= 0) {
-        const text = targetNode.textContent;
-        return { nodeIndex: idx, charIndex: Math.min(targetOffset, Math.max(0, text.length - 1)) };
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * In text node ni, find the character closest to goalX on the
-   * visual line nearest to targetY.
-   */
-  findXInNode(ni, goalX, targetY) {
-    const node = this.textNodes[ni];
-    if (!node || !node.textContent) return 0;
-    const len = node.textContent.length;
-
-    // First pass: find the best character considering both X and Y proximity.
-    // If targetY is inside this node's range, prefer chars on that line.
-    // If not, fall back to just finding the closest X on the nearest line.
-    let bestCi = 0;
-    let bestDist = Infinity;
-    const step = len > 200 ? Math.ceil(len / 200) : 1;
-
-    for (let ci = 0; ci < len; ci += step) {
-      const r = this.getCharRect(ni, ci);
-      if (!r || r.height === 0) continue;
-
-      const yDist = Math.abs(r.top - targetY);
-      const xDist = Math.abs(r.left + r.width / 2 - goalX);
-      // Weight vertical alignment much more heavily than horizontal,
-      // but don't hard-filter — we want the best available char even
-      // if no char is exactly on the target Y line.
-      const dist = yDist * 10 + xDist;
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestCi = ci;
-      }
-    }
-    return bestCi;
-  }
-
   moveDown() {
     const currentRect = this.getCursorRect();
     if (!currentRect) return;
@@ -562,49 +492,57 @@ class VimCursor {
     }
 
     const currentY = currentRect.top;
-    const lineHeight = currentRect.height || 20;
+    const currentBottom = currentRect.bottom;
     const goalX = this.goalX;
 
-    // Strategy 1: Use caretRangeFromPoint — handles multi-line nodes correctly
-    for (let dy = lineHeight; dy < lineHeight * 20; dy += lineHeight * 0.4) {
-      const targetY = currentY + dy;
-      if (targetY >= window.innerHeight - 2) break;
+    // Find the cursor position on the next visual line below.
+    // Scan every text node's every character to find those visually below currentY.
+    // Among those, pick the one closest to goalX on the nearest line.
+    let bestNi = -1;
+    let bestCi = -1;
+    let bestScore = Infinity; // lower is better; score = lineDist * 1000 + xDist
 
-      const pos = this.resolveCaretPosition(goalX, targetY);
-      if (pos && (pos.nodeIndex !== this.cursorNodeIndex || pos.charIndex !== this.cursorCharIndex)) {
-        const newRect = this.getCharRect(pos.nodeIndex, pos.charIndex);
-        if (newRect && newRect.top > currentY + 2) {
-          this.cursorNodeIndex = pos.nodeIndex;
-          this.cursorCharIndex = pos.charIndex;
-          this.updateCursor();
-          return;
-        }
-      }
-    }
-
-    // Strategy 2: walk text nodes checking each first character's Y position.
-    // Start from cursorNodeIndex (not +1) so we also check if the CURRENT node
-    // wraps to the next line — but skip self-match.
-    const tolerance = 4;
-    for (let ni = this.cursorNodeIndex; ni < this.textNodes.length; ni++) {
+    for (let ni = 0; ni < this.textNodes.length; ni++) {
       const node = this.textNodes[ni];
       if (!node || !node.textContent) continue;
-      const firstRect = this.getCharRect(ni, 0);
-      if (!firstRect || firstRect.height === 0) continue;
-      // Is this node's first char below currentY? (i.e., on a different line)
-      if (firstRect.top <= currentY + tolerance) continue;
+      const len = node.textContent.length;
+      // Sample characters (every char for short nodes, every 2nd for long)
+      const step = len > 100 ? 2 : 1;
+      for (let ci = 0; ci < len; ci += step) {
+        const r = this.getCharRect(ni, ci);
+        if (!r || r.height === 0) continue;
 
-      // Don't pick a char identical to where we already are
-      const ci = this.findXInNode(ni, goalX, firstRect.top);
-      if (ni === this.cursorNodeIndex && ci === this.cursorCharIndex) continue;
+        // Must be below current line (top of char must be below bottom of current char)
+        if (r.top <= currentY + 2) continue;
 
-      this.cursorNodeIndex = ni;
-      this.cursorCharIndex = ci;
+        const lineDist = r.top - currentBottom;
+        const xDist = Math.abs(r.left + r.width / 2 - goalX);
+        const score = lineDist * 1000 + xDist;
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestNi = ni;
+          bestCi = ci;
+        }
+
+        // Optimization: if we've gone far below, stop checking this node
+        if (r.top > currentBottom + 500) break;
+      }
+
+      // If the first char of this node is far below currentY, we can
+      // stop scanning after we find a good candidate
+      if (bestNi >= 0 && bestScore < 1000) break;
+    }
+
+    if (bestNi >= 0) {
+      this.cursorNodeIndex = bestNi;
+      this.cursorCharIndex = bestCi;
       this.updateCursor();
       return;
     }
 
-    // Near bottom of page — try scrolling
+    // No line found below — try scrolling
+    const lineHeight = currentRect.height || 20;
     if (currentY + lineHeight >= window.innerHeight - 20) {
       window.scrollBy({ top: lineHeight * 2, behavior: 'smooth' });
     }
@@ -619,53 +557,55 @@ class VimCursor {
     }
 
     const currentY = currentRect.top;
-    const lineHeight = currentRect.height || 20;
     const goalX = this.goalX;
 
-    // If cursor is near top of viewport, scroll up first
-    if (currentY - lineHeight < 0) {
-      window.scrollBy({ top: -lineHeight * 2, behavior: 'smooth' });
-      return;
-    }
+    // Find the cursor position on the previous visual line above.
+    // Scan every text node's characters to find those visually above currentY.
+    let bestNi = -1;
+    let bestCi = -1;
+    let bestScore = Infinity;
 
-    // Strategy 1: caretRangeFromPoint
-    for (let dy = lineHeight; dy < lineHeight * 20; dy += lineHeight * 0.4) {
-      const targetY = currentY - dy;
-      if (targetY < 1) break;
-
-      const pos = this.resolveCaretPosition(goalX, targetY);
-      if (pos && (pos.nodeIndex !== this.cursorNodeIndex || pos.charIndex !== this.cursorCharIndex)) {
-        const newRect = this.getCharRect(pos.nodeIndex, pos.charIndex);
-        if (newRect && newRect.top < currentY - 2) {
-          this.cursorNodeIndex = pos.nodeIndex;
-          this.cursorCharIndex = pos.charIndex;
-          this.updateCursor();
-          return;
-        }
-      }
-    }
-
-    // Strategy 2: walk text nodes backward.
-    // Start from cursorNodeIndex (not -1) to also check if the CURRENT node
-    // wraps to a previous line.
-    const tolerance = 4;
-    for (let ni = this.cursorNodeIndex; ni >= 0; ni--) {
+    for (let ni = 0; ni < this.textNodes.length; ni++) {
       const node = this.textNodes[ni];
       if (!node || !node.textContent) continue;
       const len = node.textContent.length;
-      const lastRect = this.getCharRect(ni, Math.max(0, len - 1));
-      if (!lastRect || lastRect.height === 0) continue;
-      // Is any part of this node above currentY?
-      if (lastRect.bottom >= currentY - tolerance) continue;
+      const step = len > 100 ? 2 : 1;
+      for (let ci = 0; ci < len; ci += step) {
+        const r = this.getCharRect(ni, ci);
+        if (!r || r.height === 0) continue;
 
-      // Don't pick a char identical to where we already are
-      const ci = this.findXInNode(ni, goalX, lastRect.top);
-      if (ni === this.cursorNodeIndex && ci === this.cursorCharIndex) continue;
+        // Must be above current line
+        if (r.bottom >= currentY - 2) continue;
 
-      this.cursorNodeIndex = ni;
-      this.cursorCharIndex = ci;
+        const lineDist = currentY - r.bottom;
+        const xDist = Math.abs(r.left + r.width / 2 - goalX);
+        const score = lineDist * 1000 + xDist;
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestNi = ni;
+          bestCi = ci;
+        }
+
+        // Optimization: if we've gone far above, stop
+        if (r.bottom < currentY - 500) break;
+      }
+
+      // Early exit: found a good candidate on the nearest line
+      if (bestNi >= 0 && bestScore < 1000) break;
+    }
+
+    if (bestNi >= 0) {
+      this.cursorNodeIndex = bestNi;
+      this.cursorCharIndex = bestCi;
       this.updateCursor();
       return;
+    }
+
+    // No line found above — try scrolling
+    const lineHeight = currentRect.height || 20;
+    if (currentY - lineHeight < 0) {
+      window.scrollBy({ top: -lineHeight * 2, behavior: 'smooth' });
     }
   }
 
