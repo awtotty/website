@@ -474,180 +474,62 @@ class VimCursor {
     this.updateCursor();
   }
 
-  moveDown() {
-    const rect = this.getCursorRect();
-    if (!rect) return;
-
-    // Establish goal X on first vertical move, preserve across consecutive j/k
-    if (this.goalX === null) {
-      this.goalX = rect.left + rect.width / 2;
-    }
-
-    // Try successive Y positions below the current line until we find a hit
-    const step = rect.height || 20;
-    for (let offset = step; offset < step * 20; offset += step * 0.5) {
-      const targetY = rect.top + offset;
-      if (this.moveToPoint(this.goalX, targetY)) return;
-    }
-  }
-
-  moveUp() {
-    const rect = this.getCursorRect();
-    if (!rect) return;
-
-    if (this.goalX === null) {
-      this.goalX = rect.left + rect.width / 2;
-    }
-
-    const step = rect.height || 20;
-    for (let offset = step; offset < step * 20; offset += step * 0.5) {
-      const targetY = rect.top - offset;
-      if (this.moveToPoint(this.goalX, targetY)) return;
-    }
+  /**
+   * Get the bounding rect of a text node (all characters combined).
+   * Returns null if the node is empty or off-screen.
+   */
+  getTextNodeRect(ni) {
+    const node = this.textNodes[ni];
+    if (!node || !node.textContent) return null;
+    const len = node.textContent.length;
+    if (len === 0) return null;
+    const range = document.createRange();
+    range.setStart(node, 0);
+    range.setEnd(node, len);
+    return range.getBoundingClientRect();
   }
 
   /**
-   * Move cursor to the text position at viewport coordinates (x, y).
-   * Uses caretRangeFromPoint (native browser API) when available,
-   * then maps back to our textNodes array. Returns true on success.
+   * Find the character offset within a text node whose center is closest
+   * to a given X coordinate. Uses caretRangeFromPoint when the node
+   * is on-screen, falls back to per-character measurement otherwise.
    */
-  moveToPoint(x, y) {
-    // Clamp x/y to viewport bounds
-    const clampedX = Math.max(0, Math.min(x, window.innerWidth - 1));
-    const clampedY = Math.max(0, Math.min(y, document.documentElement.scrollHeight - 1));
+  findClosestCharInNode(ni, goalX) {
+    const node = this.textNodes[ni];
+    if (!node || !node.textContent) return 0;
+    const text = node.textContent;
+    const len = text.length;
+    if (len === 0) return 0;
 
-    // Use native caret-position APIs
-    let targetNode = null;
-    let targetOffset = 0;
-
-    if (document.caretRangeFromPoint) {
-      const range = document.caretRangeFromPoint(clampedX, clampedY);
-      if (range) {
-        targetNode = range.startContainer;
-        targetOffset = range.startOffset;
-      }
-    } else if (document.caretPositionFromPoint) {
-      // Firefox
-      const pos = document.caretPositionFromPoint(clampedX, clampedY);
-      if (pos) {
-        targetNode = pos.offsetNode;
-        targetOffset = pos.offset;
-      }
-    }
-
-    if (!targetNode) return false;
-
-    // If we got a text node, find it (or its ancestor) in our textNodes array
-    if (targetNode.nodeType === Node.TEXT_NODE) {
-      const idx = this.textNodes.indexOf(targetNode);
-      if (idx >= 0) {
-        // Clamp offset to valid range (use last char if offset is at end)
-        const text = targetNode.textContent;
-        this.cursorNodeIndex = idx;
-        this.cursorCharIndex = Math.min(targetOffset, Math.max(0, text.length - 1));
-        this.updateCursor();
-        return true;
-      }
-
-      // Text node not in our array (e.g., inside <footer>) — fall through
-    }
-
-    // Element node: try to find the nearest text node in our array
-    // by looking for the closest text node by screen position
-    return this.moveToPointFallback(clampedX, clampedY, targetNode);
-  }
-
-  /**
-   * Fallback: find the closest text node to (x, y) by checking bounding rects.
-   * Used when caretRangeFromPoint returns an element outside our text node list.
-   */
-  moveToPointFallback(x, y, hintEl) {
-    // If hintEl is an element, check if any of our text nodes are inside it
-    if (hintEl && hintEl.nodeType === Node.ELEMENT_NODE) {
-      let bestNi = -1;
-      let bestDist = Infinity;
-      for (let ni = 0; ni < this.textNodes.length; ni++) {
-        const tn = this.textNodes[ni];
-        if (!tn.parentElement) continue;
-        if (!hintEl.contains(tn)) continue;
-
-        const range = document.createRange();
-        range.setStart(tn, 0);
-        range.setEnd(tn, Math.max(1, tn.textContent.length));
-        const r = range.getBoundingClientRect();
-        if (r.height === 0) continue;
-
-        const dy = Math.abs(r.top + r.height / 2 - y);
-        const dx = Math.abs(r.left + r.width / 2 - x);
-        const dist = dy * 5 + dx;
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestNi = ni;
+    // Try caretRangeFromPoint for on-screen nodes — fast and accurate
+    const nodeRect = this.getTextNodeRect(ni);
+    if (nodeRect && nodeRect.top >= 0 && nodeRect.bottom <= window.innerHeight && nodeRect.width > 0) {
+      const clampX = Math.max(nodeRect.left + 1, Math.min(goalX, nodeRect.right - 1));
+      const clampY = Math.max(nodeRect.top + 1, Math.min(nodeRect.top + nodeRect.height / 2, nodeRect.bottom - 1));
+      if (document.caretRangeFromPoint) {
+        const range = document.caretRangeFromPoint(clampX, clampY);
+        if (range && range.startContainer === node) {
+          return Math.min(range.startOffset, len - 1);
+        }
+        // caretRangeFromPoint may have returned a different node if
+        // the node spans multiple lines — that's OK for vertical movement
+        if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+          const idx = this.textNodes.indexOf(range.startContainer);
+          if (idx === ni) {
+            return Math.min(range.startOffset, len - 1);
+          }
         }
       }
-
-      if (bestNi >= 0) {
-        this.cursorNodeIndex = bestNi;
-        // Position at the character closest to x
-        const tn = this.textNodes[bestNi];
-        this.cursorCharIndex = this.findClosestChar(tn, x);
-        this.updateCursor();
-        return true;
-      }
     }
 
-    // Last resort: find the text node whose bounding rect center is
-    // vertically closest to y and horizontally closest to x
-    let bestNi = -1;
+    // Fallback: measure character rects individually
     let bestCi = 0;
     let bestDist = Infinity;
-
-    for (let ni = 0; ni < this.textNodes.length; ni++) {
-      const tn = this.textNodes[ni];
-      if (!tn.parentElement) continue;
-      const r = tn.parentElement.getBoundingClientRect();
-      if (r.height === 0) continue;
-
-      // Quick vertical filter
-      if (Math.abs(r.top + r.height / 2 - y) > 200) continue;
-
-      const ci = this.findClosestChar(tn, x);
-      const cr = this.getCharRect(ni, ci);
-      if (!cr) continue;
-
-      const dy = Math.abs(cr.top + cr.height / 2 - y);
-      const dx = Math.abs(cr.left + cr.width / 2 - x);
-      const dist = dy * 10 + dx;
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestNi = ni;
-        bestCi = ci;
-      }
-    }
-
-    if (bestNi >= 0) {
-      this.cursorNodeIndex = bestNi;
-      this.cursorCharIndex = bestCi;
-      this.updateCursor();
-      return true;
-    }
-    return false;
-  }
-
-  /** Find the character offset within a text node closest to a given X coordinate. */
-  findClosestChar(textNode, x) {
-    const text = textNode.textContent;
-    if (text.length === 0) return 0;
-
-    let bestCi = 0;
-    let bestDist = Infinity;
-
-    // Sample every character (but cap at 500 for long nodes)
-    const step = text.length > 500 ? Math.ceil(text.length / 500) : 1;
-    for (let ci = 0; ci < text.length; ci += step) {
-      const r = this.getCharRectByNode(textNode, ci);
+    const step = len > 500 ? Math.ceil(len / 500) : 1;
+    for (let ci = 0; ci < len; ci += step) {
+      const r = this.getCharRect(ni, ci);
       if (!r || r.width === 0) continue;
-      const dist = Math.abs(r.left + r.width / 2 - x);
+      const dist = Math.abs(r.left + r.width / 2 - goalX);
       if (dist < bestDist) {
         bestDist = dist;
         bestCi = ci;
@@ -656,23 +538,63 @@ class VimCursor {
     return bestCi;
   }
 
-  /** Get rect for a character at (nodeIndex, charIndex) in our textNodes array. */
-  getCharRect(ni, ci) {
-    const node = this.textNodes[ni];
-    if (!node || ci >= node.textContent.length) return null;
-    const range = document.createRange();
-    range.setStart(node, ci);
-    range.setEnd(node, ci + 1);
-    return range.getBoundingClientRect();
+  moveDown() {
+    const currentRect = this.getCursorRect();
+    if (!currentRect) return;
+
+    if (this.goalX === null) {
+      this.goalX = currentRect.left + currentRect.width / 2;
+    }
+
+    // Find the next text node that is visually on a lower line
+    const currentY = currentRect.top;
+    const tolerance = 4; // pixels tolerance for "same line"
+
+    // Walk forward through text nodes looking for one that's visually below
+    for (let ni = this.cursorNodeIndex; ni < this.textNodes.length; ni++) {
+      const rect = this.getTextNodeRect(ni);
+      if (!rect || rect.height === 0 || rect.width === 0) continue;
+
+      // Skip nodes on the same line as cursor or above
+      if (rect.bottom <= currentY + tolerance) continue;
+
+      // This node is on a line below us. Find the closest char to goalX.
+      this.cursorNodeIndex = ni;
+      this.cursorCharIndex = this.findClosestCharInNode(ni, this.goalX);
+      this.updateCursor();
+      return;
+    }
+
+    // No node found below — stay put
   }
 
-  /** Get rect for a character at (textNode, offset) directly. */
-  getCharRectByNode(textNode, offset) {
-    if (offset >= textNode.textContent.length) return null;
-    const range = document.createRange();
-    range.setStart(textNode, offset);
-    range.setEnd(textNode, offset + 1);
-    return range.getBoundingClientRect();
+  moveUp() {
+    const currentRect = this.getCursorRect();
+    if (!currentRect) return;
+
+    if (this.goalX === null) {
+      this.goalX = currentRect.left + currentRect.width / 2;
+    }
+
+    const currentY = currentRect.top;
+    const tolerance = 4;
+
+    // Walk backward through text nodes looking for one that's visually above
+    for (let ni = this.cursorNodeIndex; ni >= 0; ni--) {
+      const rect = this.getTextNodeRect(ni);
+      if (!rect || rect.height === 0 || rect.width === 0) continue;
+
+      // Skip nodes on the same line as cursor or below
+      if (rect.top >= currentY - tolerance) continue;
+
+      // This node is on a line above us. Find the closest char to goalX.
+      this.cursorNodeIndex = ni;
+      this.cursorCharIndex = this.findClosestCharInNode(ni, this.goalX);
+      this.updateCursor();
+      return;
+    }
+
+    // No node found above — stay put
   }
 
   // --- Vim character classification ---
