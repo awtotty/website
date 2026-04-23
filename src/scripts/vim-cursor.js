@@ -93,13 +93,19 @@ class VimCursor {
 
   /** Position cursor at the end of the first <h1>'s text content. */
   positionAtH1() {
-    const h1 = document.querySelector("main h1");
-    if (h1) {
-      // Find the last text node that belongs to h1
+    // Try to find the main heading: prefer <h1>, then <h2>, then
+    // the first <p> that's a direct child of <main>
+    const main = document.querySelector("main");
+    const heading =
+      main?.querySelector("h1") ||
+      main?.querySelector("h2") ||
+      main?.querySelector("p");
+
+    if (heading) {
+      // Find the last text node that belongs to this element
       for (let i = this.textNodes.length - 1; i >= 0; i--) {
-        if (h1.contains(this.textNodes[i])) {
+        if (heading.contains(this.textNodes[i])) {
           this.cursorNodeIndex = i;
-          // Position at end of h1 text
           this.cursorCharIndex = Math.max(0, this.textNodes[i].textContent.length - 1);
           this.showCursor();
           this.updateCursor();
@@ -107,7 +113,7 @@ class VimCursor {
         }
       }
     }
-    // Fallback: start of document
+    // Final fallback: start of document
     this.cursorNodeIndex = 0;
     this.cursorCharIndex = 0;
     this.showCursor();
