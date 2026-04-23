@@ -1,0 +1,46 @@
+---
+import Base from "../layouts/Base.astro";
+import { getCollection } from "astro:content";
+
+const projects = await getCollection("projects");
+const sortedProjects = projects.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+const posts = await getCollection("blog");
+const sortedPosts = posts.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+const formatDate = (d: Date) =>
+  d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+---
+
+<Base title="Austin Totty">
+  <p>AUSTIN TOTTY</p>
+
+  <span class="spacer"></span>
+
+  <p class="mb-0">CONTACT: <a href="mailto:hi@austin-totty.com">hi@austin-totty.com</a></p>
+  <p>LOCATION: USA</p>
+
+  <span class="spacer"></span>
+
+  <p>PROJECTS</p>
+
+  <ul>
+    {sortedProjects.map((project) => (
+      <li>
+        [{project.data.title}](<a href={project.data.url} target="_blank">{project.data.url}</a>) ... <a class="button" href={`/projects/${project.id}`}>read</a>
+      </li>
+    ))}
+  </ul>
+
+  <span class="spacer"></span>
+
+  <p>THOUGHTS</p>
+
+  <ul>
+    {sortedPosts.map((post) => (
+      <li>
+        [{post.data.title}](<a href={`/blog/${post.id}`}>{`/blog/${post.id}`}</a>) ... {formatDate(post.data.date)}
+      </li>
+    ))}
+  </ul>
+</Base>
