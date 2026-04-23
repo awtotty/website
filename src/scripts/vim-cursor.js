@@ -166,8 +166,17 @@ class VimCursor {
       // Fall through to handle 'g' as normal key if needed
     }
 
-    const vimKeys = ["h", "j", "k", "l", "w", "e", "b", "0", "$", "G"];
+    const vimKeys = ["h", "j", "k", "l", "w", "e", "b", "_", "$", "G"];
     const navKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+
+    // Escape hides the cursor; it stays hidden until a vim nav key is pressed
+    if (key === "Escape") {
+      if (this.active) {
+        this.hideCursor();
+        e.preventDefault();
+      }
+      return;
+    }
 
     if (vimKeys.includes(key) || navKeys.includes(key) || key === " " || key === "Enter") {
       e.preventDefault();
@@ -175,7 +184,7 @@ class VimCursor {
       return; // Not a vim key we handle
     }
 
-    // Activate cursor on first vim key
+    // Activate cursor on first vim key (re-activate if hidden via Escape)
     if (!this.active && (vimKeys.includes(key) || navKeys.includes(key) || key === "G")) {
       this.showCursor();
     }
@@ -208,7 +217,7 @@ class VimCursor {
       case "b":
         this.moveWordBackward();
         break;
-      case "0":
+      case "_":
         this.moveToLineStart();
         break;
       case "$":
