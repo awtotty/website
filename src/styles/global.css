@@ -87,6 +87,11 @@ a.button {
   color: var(--muted);
 }
 
+a.button:hover {
+  text-decoration: none;
+  color: var(--accent);
+}
+
 a.button::before {
   content: "[ ";
 }
