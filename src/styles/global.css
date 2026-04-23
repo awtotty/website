@@ -98,6 +98,24 @@ main {
   flex: 1;
 }
 
+/* Skip link — visible only on keyboard focus */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-link:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
 /* Lists */
 ul,
 ol {
