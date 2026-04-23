@@ -186,31 +186,83 @@ blockquote {
   margin-bottom: 1rem;
 }
 
-/* Vim cursor hover state — mirrors :hover for interactive elements */
+/* --- Vim cursor --- */
+
+#vim-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 9999;
+  display: none;
+  background: var(--fg);
+  color: var(--bg);
+  mix-blend-mode: difference;
+}
+
+#vim-cursor.vim-cursor-blink {
+  animation: vim-blink 1.06s step-end infinite;
+}
+
+@keyframes vim-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #vim-cursor.vim-cursor-blink { animation: none; }
+}
+
+/* Simulated hover state for elements the cursor is on top of */
 a.vim-hover,
 a.vim-hover:visited {
   color: var(--accent);
 }
 
 button.vim-hover,
-[tabindex].vim-hover {
+[tabindex]:not([tabindex="-1"]).vim-hover {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* Vim search bar */
-#vim-search-bar mark {
-  background: none;
+/* Search highlights via CSS Custom Highlight API */
+::highlight(vim-search) {
+  background: var(--accent);
+  color: var(--bg);
 }
 
-/* Blink animation for vim cursor (fallback if JS controls it) */
-@keyframes vim-blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
+::highlight(vim-search-current) {
+  background: var(--fg);
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Search bar at bottom of viewport */
+#vim-search-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font);
+  font-size: 0.875rem;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+#vim-search-bar .vim-search-prompt {
+  margin-right: 0.25rem;
+  font-weight: 700;
+}
+
+#vim-search-bar .vim-search-caret {
+  background: var(--bg);
+  color: var(--fg);
+  white-space: pre;
+}
+
+#vim-search-bar .vim-search-count {
+  margin-left: 0.5rem;
+  opacity: 0.6;
 }
