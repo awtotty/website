@@ -514,8 +514,6 @@ class VimCursor {
       if (text.length === 0) continue;
       const r = this.getCharRect(ni, 0);
       if (!r) continue;
-      // Different visual line = top Y differs by more than half a line height
-      // Use generous tolerance to handle subpixel differences between inline elements
       if (r.height > 0 && Math.abs(r.top - currentY) > Math.max(r.height * 0.5, 5)) break;
       this.cursorNodeIndex = ni;
       this.cursorCharIndex = text.length - 1;
@@ -528,24 +526,30 @@ class VimCursor {
     const currentRect = this.getCursorRect();
     if (!currentRect) return;
     const currentY = currentRect.top;
+    // Use the current char's vertical center as reference
+    const lineHeight = currentRect.height || 20;
 
     for (let ni = this.cursorNodeIndex + 1; ni < this.textNodes.length; ni++) {
       const node = this.textNodes[ni];
       const text = node.textContent;
       if (text.length === 0) continue;
-      // Check if this node is on the same visual line as the cursor.
-      // Use char at offset 0 as a proxy. For nodes that start with whitespace,
-      // find the first non-whitespace character to get a reliable rect.
-      let r = this.getCharRect(ni, 0);
-      if (!r || r.width === 0) {
-        // Char 0 might be whitespace with zero width; try first non-space
-        for (let ci = 0; ci < text.length && ci < 20; ci++) {
-          r = this.getCharRect(ni, ci);
-          if (r && r.width > 0) break;
-        }
+
+      // Check any character in this node to see if it's on the same line.
+      // The first char might be whitespace with a zero-width rect,
+      // so scan a few chars to find a visible one.
+      let r = null;
+      for (let ci = 0; ci < Math.min(text.length, 20); ci++) {
+        r = this.getCharRect(ni, ci);
+        if (r && r.width > 0 && r.height > 0) break;
+        r = null;
       }
+
       if (!r) continue;
-      if (r.height > 0 && Math.abs(r.top - currentY) > Math.max(r.height * 0.5, 5)) break;
+
+      // If this node is on a different visual line, stop searching
+      if (Math.abs(r.top - currentY) > Math.max(lineHeight * 0.5, 5)) break;
+
+      // Same line — move to start of this node
       this.cursorNodeIndex = ni;
       this.cursorCharIndex = 0;
       return;
