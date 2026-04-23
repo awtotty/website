@@ -480,9 +480,10 @@ class VimCursor {
     this.goalX = null;
     if (this.cursorCharIndex > 0) {
       this.cursorCharIndex--;
-    } else {
-      // Move to end of previous text node, but only if it's on the same visual line
-      this.moveToPrevNodeOnSameLine();
+    } else if (this.cursorNodeIndex > 0) {
+      // Move to end of previous text node
+      this.cursorNodeIndex--;
+      this.cursorCharIndex = Math.max(0, this.textNodes[this.cursorNodeIndex].textContent.length - 1);
     }
     this.updateCursor();
   }
@@ -495,82 +496,12 @@ class VimCursor {
     const text = node.textContent;
     if (this.cursorCharIndex < text.length - 1) {
       this.cursorCharIndex++;
-    } else {
-      // Move to start of next text node, but only if it's on the same visual line
-      this.moveToNextNodeOnSameLine();
+    } else if (this.cursorNodeIndex < this.textNodes.length - 1) {
+      // Move to start of next text node
+      this.cursorNodeIndex++;
+      this.cursorCharIndex = 0;
     }
     this.updateCursor();
-  }
-
-  /** Move to end of previous text node if it's on the same visual line. */
-  moveToPrevNodeOnSameLine() {
-    const currentRect = this.getCursorRect();
-    if (!currentRect) return;
-    const currentY = currentRect.top;
-    const lineHeight = currentRect.height || 20;
-
-    for (let ni = this.cursorNodeIndex - 1; ni >= 0; ni--) {
-      const node = this.textNodes[ni];
-      const text = node.textContent;
-      if (text.length === 0) continue;
-
-      // For backward: check the LAST character first (that's where we'd land),
-      // then scan backward looking for any char on our line.
-      // This matters for long text nodes that span multiple lines —
-      // the first char might be on a different line than the last char.
-      let onSameLine = false;
-      for (let ci = text.length - 1; ci >= 0 && ci >= text.length - 20; ci--) {
-        const r = this.getCharRect(ni, ci);
-        if (!r || r.width === 0 || r.height === 0) continue;
-        if (Math.abs(r.top - currentY) <= Math.max(lineHeight * 0.5, 5)) {
-          onSameLine = true;
-          break;
-        }
-        // If we've gone too far above, this node is entirely on a different line
-        if (r.top < currentY - lineHeight) break;
-      }
-
-      if (!onSameLine) break;
-
-      this.cursorNodeIndex = ni;
-      this.cursorCharIndex = text.length - 1;
-      return;
-    }
-  }
-
-  /** Move to start of next text node if it's on the same visual line. */
-  moveToNextNodeOnSameLine() {
-    const currentRect = this.getCursorRect();
-    if (!currentRect) return;
-    const currentY = currentRect.top;
-    // Use the current char's vertical center as reference
-    const lineHeight = currentRect.height || 20;
-
-    for (let ni = this.cursorNodeIndex + 1; ni < this.textNodes.length; ni++) {
-      const node = this.textNodes[ni];
-      const text = node.textContent;
-      if (text.length === 0) continue;
-
-      // Check any character in this node to see if it's on the same line.
-      // The first char might be whitespace with a zero-width rect,
-      // so scan a few chars to find a visible one.
-      let r = null;
-      for (let ci = 0; ci < Math.min(text.length, 20); ci++) {
-        r = this.getCharRect(ni, ci);
-        if (r && r.width > 0 && r.height > 0) break;
-        r = null;
-      }
-
-      if (!r) continue;
-
-      // If this node is on a different visual line, stop searching
-      if (Math.abs(r.top - currentY) > Math.max(lineHeight * 0.5, 5)) break;
-
-      // Same line — move to start of this node
-      this.cursorNodeIndex = ni;
-      this.cursorCharIndex = 0;
-      return;
-    }
   }
 
   /** Get rect for a character at (nodeIndex, charIndex) in our textNodes array. */
