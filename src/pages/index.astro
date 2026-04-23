@@ -25,11 +25,14 @@ const formatDate = (d: Date) =>
   <p>PROJECTS</p>
 
   <ul>
-    {sortedProjects.map((project) => (
-      <li>
-        [{project.data.title}](<a href={project.data.url} target="_blank">{project.data.url}</a>) ... <a class="button" href={`/projects/${project.id}`}>read</a>
-      </li>
-    ))}
+    {sortedProjects.map((project) => {
+      const link = project.data.url ?? project.data.github;
+      return (
+        <li>
+          [{project.data.title}]({link ? <a href={link} target="_blank">{link}</a> : "—"}) ... <a class="button" href={`/projects/${project.id}`}>read</a>
+        </li>
+      );
+    })}
   </ul>
 
   <span class="spacer"></span>
