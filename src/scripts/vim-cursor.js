@@ -434,21 +434,10 @@ class VimCursor {
     const node = this.textNodes[this.cursorNodeIndex];
     if (!node) return;
 
-    const text = node.textContent;
-    // Skip leading whitespace if we're at the start after whitespace
     if (this.cursorCharIndex > 0) {
       this.cursorCharIndex--;
-      // Skip past whitespace-only positions at beginning of text nodes
-      while (this.cursorCharIndex > 0 && text[this.cursorCharIndex] === " " && this.cursorCharIndex === 0) {
-        this.cursorCharIndex--;
-      }
-    } else if (this.cursorNodeIndex > 0) {
-      // Move to end of previous node
-      this.cursorNodeIndex--;
-      const prevText = this.textNodes[this.cursorNodeIndex]?.textContent || "";
-      this.cursorCharIndex = Math.max(0, prevText.length - 1);
     }
-    this.clampPosition();
+    // Don't wrap to previous line — stop at start of current text node
     this.updateCursor();
   }
 
@@ -460,22 +449,8 @@ class VimCursor {
     const text = node.textContent;
     if (this.cursorCharIndex < text.length - 1) {
       this.cursorCharIndex++;
-    } else if (this.cursorNodeIndex < this.textNodes.length - 1) {
-      // Move to start of next node
-      this.cursorNodeIndex++;
-      this.cursorCharIndex = 0;
-      // Skip leading whitespace in the new node
-      const newNode = this.textNodes[this.cursorNodeIndex];
-      if (newNode) {
-        while (
-          this.cursorCharIndex < newNode.textContent.length - 1 &&
-          newNode.textContent[this.cursorCharIndex] === " "
-        ) {
-          this.cursorCharIndex++;
-        }
-      }
     }
-    this.clampPosition();
+    // Don't wrap to next line — stop at end of current text node
     this.updateCursor();
   }
 
