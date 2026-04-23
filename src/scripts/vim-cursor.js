@@ -156,7 +156,7 @@ class VimCursor {
       // Fall through to handle 'g' as normal key if needed
     }
 
-    const vimKeys = ["h", "j", "k", "l", "w", "b", "0", "$", "G"];
+    const vimKeys = ["h", "j", "k", "l", "w", "e", "b", "0", "$", "G"];
     const navKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
 
     if (vimKeys.includes(key) || navKeys.includes(key) || key === " " || key === "Enter") {
@@ -191,6 +191,9 @@ class VimCursor {
         break;
       case "w":
         this.moveWordForward();
+        break;
+      case "e":
+        this.moveWordEnd();
         break;
       case "b":
         this.moveWordBackward();
@@ -672,102 +675,222 @@ class VimCursor {
     return range.getBoundingClientRect();
   }
 
-  moveWordForward() {
-    this.goalX = null;
-    const node = this.textNodes[this.cursorNodeIndex];
-    if (!node) return;
+  // --- Vim character classification ---
 
-    let ni = this.cursorNodeIndex;
-    let ci = this.cursorCharIndex;
-    let text = node.textContent;
+  /** Vim word chars: letters, digits, underscore. Everything else is non-word. */
+  isWordChar(c) {
+    return /\w/.test(c);
+  }
 
-    // Skip current non-whitespace
-    while (ci < text.length && text[ci] !== " " && text[ci] !== "\n") {
-      ci++;
-      if (ci >= text.length) {
-        ni++;
-        if (ni >= this.textNodes.length) {
-          ni = this.textNodes.length - 1;
-          ci = Math.max(0, (this.textNodes[ni]?.textContent?.length || 1) - 1);
-          break;
-        }
-        text = this.textNodes[ni].textContent || "";
-        ci = 0;
-      }
-    }
+  isBlankChar(c) {
+    return /\s/.test(c);
+  }
 
-    // Skip whitespace
+  /**
+   * Vim character class: chars in the same class form a "word".
+   * - 'word'  = word chars [a-zA-Z0-9_]
+   * - 'blank' = whitespace
+   * - the char itself = each punctuation char is its own class
+   *   (so :: is one word, :/ is two words)
+   */
+  charClass(c) {
+    if (!c) return null;
+    if (this.isWordChar(c)) return 'word';
+    if (this.isBlankChar(c)) return 'blank';
+    return c; // each non-word, non-blank char is its own class
+  }
+
+  /** Get character at a position in the text node stream. */
+  getCharAt(ni, ci) {
+    if (ni < 0 || ni >= this.textNodes.length) return null;
+    const text = this.textNodes[ni].textContent;
+    if (ci < 0 || ci >= text.length) return null;
+    return text[ci];
+  }
+
+  /** Next position in the text stream (across node boundaries). Returns null if past end. */
+  nextCharPos(ni, ci) {
+    ci++;
     while (ni < this.textNodes.length) {
-      text = this.textNodes[ni]?.textContent || "";
-      while (ci < text.length && (text[ci] === " " || text[ci] === "\n")) {
-        ci++;
-      }
-      if (ci < text.length) break;
+      const text = this.textNodes[ni]?.textContent;
+      if (text && ci < text.length) return { ni, ci };
       ni++;
       ci = 0;
     }
+    return null;
+  }
 
-    if (ni < this.textNodes.length) {
-      this.cursorNodeIndex = ni;
-      this.cursorCharIndex = ci;
+  /** Previous position in the text stream (across node boundaries). Returns null if past start. */
+  prevCharPos(ni, ci) {
+    ci--;
+    while (ni >= 0) {
+      const text = this.textNodes[ni]?.textContent;
+      if (text && ci >= 0 && ci < text.length) return { ni, ci };
+      ni--;
+      if (ni >= 0 && this.textNodes[ni]?.textContent) {
+        ci = this.textNodes[ni].textContent.length - 1;
+      } else {
+        ci = -1;
+      }
     }
+    return null;
+  }
+
+  // --- Vim word movements ---
+
+  /**
+   * w — Move forward to the start of the next word.
+   * Vim defines a "word" as a sequence of word chars OR a sequence of
+   * the same non-word non-blank char. Blank chars separate words.
+   *
+   * Algorithm: skip the rest of the current token, skip blanks, land
+   * on the start of the next token.
+   */
+  moveWordForward() {
+    this.goalX = null;
+    let ni = this.cursorNodeIndex;
+    let ci = this.cursorCharIndex;
+
+    const startClass = this.charClass(this.getCharAt(ni, ci));
+
+    // 1) Skip rest of current token (same class)
+    let pos = { ni, ci };
+    while (pos) {
+      const nextPos = this.nextCharPos(pos.ni, pos.ci);
+      if (!nextPos) break; // at end of document
+      const nextClass = this.charClass(this.getCharAt(nextPos.ni, nextPos.ci));
+      if (nextClass !== startClass) break;
+      pos = nextPos;
+    }
+
+    // 2) Skip blanks (whitespace)
+    while (pos) {
+      const nextPos = this.nextCharPos(pos.ni, pos.ci);
+      if (!nextPos) break;
+      const nextClass = this.charClass(this.getCharAt(nextPos.ni, nextPos.ci));
+      if (nextClass !== 'blank') break;
+      pos = nextPos;
+    }
+
+    // 3) We're now past blanks — but we may need to skip to the actual next position
+    //    if pos didn't advance from step 1 (e.g., we were already at the last char of
+    //    the current token and the next char is a different token)
+    const finalPos = this.nextCharPos(pos.ni, pos.ci);
+    if (finalPos) {
+      // Check if we moved at all from start
+      let checkPos = { ni: this.cursorNodeIndex, ci: this.cursorCharIndex };
+      let advanced = false;
+      while (checkPos) {
+        if (checkPos.ni === finalPos.ni && checkPos.ci === finalPos.ci) { advanced = true; break; }
+        const np = this.nextCharPos(checkPos.ni, checkPos.ci);
+        if (!np || (np.ni === checkPos.ni && np.ci === checkPos.ci)) break;
+        checkPos = np;
+        if (checkPos.ni > finalPos.ni || (checkPos.ni === finalPos.ni && checkPos.ci >= finalPos.ci)) break;
+      }
+      // If we're landing on blank, keep going forward until non-blank
+      let landingPos = finalPos;
+      while (landingPos) {
+        const cls = this.charClass(this.getCharAt(landingPos.ni, landingPos.ci));
+        if (cls !== 'blank') break;
+        landingPos = this.nextCharPos(landingPos.ni, landingPos.ci);
+      }
+      if (landingPos) {
+        this.cursorNodeIndex = landingPos.ni;
+        this.cursorCharIndex = landingPos.ci;
+      }
+    }
+
     this.clampPosition();
     this.updateCursor();
   }
 
+  /**
+   * e — Move forward to the end of the current/next word.
+   *
+   * Algorithm: advance one position, skip blanks, then skip same-class chars.
+   * Land on the last char of that token.
+   */
+  moveWordEnd() {
+    this.goalX = null;
+    let ni = this.cursorNodeIndex;
+    let ci = this.cursorCharIndex;
+
+    // 1) Move forward one position
+    let pos = this.nextCharPos(ni, ci);
+    if (!pos) {
+      this.clampPosition();
+      this.updateCursor();
+      return;
+    }
+
+    // 2) Skip blanks
+    while (pos) {
+      const cls = this.charClass(this.getCharAt(pos.ni, pos.ci));
+      if (cls !== 'blank') break;
+      pos = this.nextCharPos(pos.ni, pos.ci);
+    }
+    if (!pos) {
+      this.clampPosition();
+      this.updateCursor();
+      return;
+    }
+
+    // 3) Skip same-class chars (to the end of this token)
+    const tokenClass = this.charClass(this.getCharAt(pos.ni, pos.ci));
+    while (pos) {
+      const nextPos = this.nextCharPos(pos.ni, pos.ci);
+      if (!nextPos) break; // at end of document — we're already at end of token
+      const nextClass = this.charClass(this.getCharAt(nextPos.ni, nextPos.ci));
+      if (nextClass !== tokenClass) break;
+      pos = nextPos;
+    }
+
+    this.cursorNodeIndex = pos.ni;
+    this.cursorCharIndex = pos.ci;
+    this.clampPosition();
+    this.updateCursor();
+  }
+
+  /**
+   * b — Move backward to the start of the current/previous word.
+   *
+   * Algorithm: move back one position, skip blanks backward, then
+   * skip same-class chars backward. Land on the first char of that token.
+   */
   moveWordBackward() {
     this.goalX = null;
     let ni = this.cursorNodeIndex;
     let ci = this.cursorCharIndex;
-    let text = this.textNodes[ni]?.textContent || "";
 
-    // If at start of node, go to previous node
-    if (ci === 0 && ni > 0) {
-      ni--;
-      text = this.textNodes[ni]?.textContent || "";
-      ci = text.length - 1;
-    } else if (ci > 0) {
-      ci--;
+    // 1) Move back one position
+    let pos = this.prevCharPos(ni, ci);
+    if (!pos) {
+      this.clampPosition();
+      this.updateCursor();
+      return;
     }
 
-    // Skip whitespace backwards
-    while (ni >= 0) {
-      text = this.textNodes[ni]?.textContent || "";
-      while (ci >= 0 && (text[ci] === " " || text[ci] === "\n")) {
-        ci--;
-      }
-      if (ci >= 0) break;
-      ni--;
-      if (ni >= 0) {
-        text = this.textNodes[ni]?.textContent || "";
-        ci = text.length - 1;
-      }
+    // 2) Skip blanks backward
+    while (pos) {
+      const cls = this.charClass(this.getCharAt(pos.ni, pos.ci));
+      if (cls !== 'blank') break;
+      const prev = this.prevCharPos(pos.ni, pos.ci);
+      if (!prev) break;
+      pos = prev;
     }
 
-    // Skip word backwards
-    while (ni >= 0) {
-      text = this.textNodes[ni]?.textContent || "";
-      while (ci >= 0 && text[ci] !== " " && text[ci] !== "\n") {
-        ci--;
-      }
-      if (ci < 0) {
-        ni--;
-        if (ni >= 0) {
-          text = this.textNodes[ni]?.textContent || "";
-          ci = text.length - 1;
-          continue;
-        }
-      } else {
-        ci++; // Move to start of word (one past the space)
-      }
-      break;
+    // 3) Skip same-class chars backward (to the start of this token)
+    const tokenClass = this.charClass(this.getCharAt(pos.ni, pos.ci));
+    while (pos) {
+      const prev = this.prevCharPos(pos.ni, pos.ci);
+      if (!prev) break; // at start of document
+      const prevClass = this.charClass(this.getCharAt(prev.ni, prev.ci));
+      if (prevClass !== tokenClass) break;
+      pos = prev;
     }
 
-    if (ni < 0) ni = 0;
-    if (ci < 0) ci = 0;
-
-    this.cursorNodeIndex = Math.min(ni, this.textNodes.length - 1);
-    this.cursorCharIndex = ci;
+    this.cursorNodeIndex = pos.ni;
+    this.cursorCharIndex = pos.ci;
     this.clampPosition();
     this.updateCursor();
   }
