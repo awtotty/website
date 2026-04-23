@@ -198,6 +198,11 @@ button.vim-hover,
   outline-offset: 2px;
 }
 
+/* Vim search bar */
+#vim-search-bar mark {
+  background: none;
+}
+
 /* Blink animation for vim cursor (fallback if JS controls it) */
 @keyframes vim-blink {
   0%,

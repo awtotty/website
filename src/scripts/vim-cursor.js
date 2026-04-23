@@ -18,6 +18,15 @@ class VimCursor {
     this.rafId = null;
     this.resizeTimeout = null;
 
+    // Search state
+    this.searchMode = false;
+    this.searchQuery = '';
+    this.searchMatches = []; // [{nodeIndex, charIndex, length}, ...]
+    this.searchMatchIndex = -1;
+    this.searchBarEl = null;
+    this.searchInputEl = null;
+    this.searchHighlights = []; // live highlight ranges
+
     this.init();
   }
 
@@ -33,6 +42,8 @@ class VimCursor {
       this.cursorEl.remove();
       this.cursorEl = null;
     }
+    this.clearSearchHighlights();
+    this.removeSearchBar();
     this.clearHover();
     document.removeEventListener("keydown", this.onKeyDown);
     document.removeEventListener("astro:after-swap", this.onPageSwap);
@@ -134,8 +145,13 @@ class VimCursor {
     const key = e.key;
 
     // Don't intercept when modifier keys are held — let browser handle shortcuts
-    // e.g. Alt+Left = browser back, Ctrl+Left = word back in text fields, etc.
     if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+    // --- Search mode: intercept all keys ---
+    if (this.searchMode) {
+      this.handleSearchKey(e);
+      return;
+    }
 
     // Don't intercept when user is typing in an input
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") {
@@ -168,6 +184,25 @@ class VimCursor {
 
     const vimKeys = ["h", "j", "k", "l", "w", "e", "b", "_", "$", "G"];
     const navKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+
+    // / enters search mode
+    if (key === "/") {
+      e.preventDefault();
+      this.enterSearch();
+      return;
+    }
+
+    // n/N cycle through search results
+    if (key === "n") {
+      e.preventDefault();
+      this.searchNext();
+      return;
+    }
+    if (key === "N") {
+      e.preventDefault();
+      this.searchPrev();
+      return;
+    }
 
     // Escape hides the cursor; it stays hidden until a vim nav key is pressed
     if (key === "Escape") {
@@ -234,6 +269,12 @@ class VimCursor {
   }
 
   handlePageSwap() {
+    this.clearSearchHighlights();
+    this.removeSearchBar();
+    this.searchMode = false;
+    this.searchQuery = '';
+    this.searchMatches = [];
+    this.searchMatchIndex = -1;
     this.scanTextNodes();
     this.positionAtH1();
   }
@@ -242,6 +283,12 @@ class VimCursor {
     clearTimeout(this.resizeTimeout);
     this.resizeTimeout = setTimeout(() => {
       if (this.active) this.updateCursor();
+      // Re-position search highlights on resize
+      if (this.searchHighlights.length > 0 && this.searchQuery) {
+        this.clearSearchHighlights();
+        this.findSearchMatches();
+        this.highlightSearchMatches();
+      }
     }, 100);
   }
 
@@ -888,9 +935,285 @@ class VimCursor {
       }
     }
   }
-}
 
-// Initialize
+  // --- Search ---
+
+  enterSearch() {
+    this.searchMode = true;
+    this.searchQuery = '';
+    this.searchMatches = [];
+    this.searchMatchIndex = -1;
+    this.clearSearchHighlights();
+    this.showCursor();
+    this.showSearchBar();
+  }
+
+  exitSearch() {
+    this.searchMode = false;
+    this.removeSearchBar();
+  }
+
+  showSearchBar() {
+    if (this.searchBarEl) this.removeSearchBar();
+
+    const bar = document.createElement('div');
+    bar.id = 'vim-search-bar';
+    bar.style.cssText = `
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      padding: 0.25rem 0.5rem;
+      font-family: var(--font, monospace);
+      font-size: 0.875rem;
+      background: var(--fg, #000);
+      color: var(--bg, #fff);
+      mix-blend-mode: normal;
+    `;
+
+    const prompt = document.createElement('span');
+    prompt.textContent = '/';
+    prompt.style.cssText = 'margin-right: 0.25rem; font-weight: bold;';
+    bar.appendChild(prompt);
+
+    const input = document.createElement('span');
+    input.id = 'vim-search-input';
+    input.style.cssText = 'outline: none; white-space: pre;';
+    // Render a cursor block at the end
+    input.textContent = '';
+    bar.appendChild(input);
+
+    document.body.appendChild(bar);
+    this.searchBarEl = bar;
+    this.searchInputEl = input;
+    this.updateSearchBar();
+  }
+
+  updateSearchBar() {
+    if (!this.searchInputEl) return;
+    const escaped = this.searchQuery.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let countStr = '';
+    if (this.searchMatches.length > 0 && this.searchQuery) {
+      const idx = this.searchMatchIndex >= 0 ? this.searchMatchIndex + 1 : 0;
+      countStr = ` <span style="opacity:0.6">[${idx}/${this.searchMatches.length}]</span>`;
+    } else if (this.searchQuery) {
+      countStr = ' <span style="opacity:0.6">[0/0]</span>';
+    }
+    this.searchInputEl.innerHTML = escaped + '<span style="background:var(--bg,#fff);color:var(--fg,#000);">\u00a0</span>' + countStr;
+  }
+
+  removeSearchBar() {
+    if (this.searchBarEl) {
+      this.searchBarEl.remove();
+      this.searchBarEl = null;
+      this.searchInputEl = null;
+    }
+  }
+
+  handleSearchKey(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const key = e.key;
+
+    if (key === 'Escape') {
+      this.exitSearch();
+      return;
+    }
+
+    if (key === 'Enter') {
+      this.executeSearch();
+      this.exitSearch();
+      return;
+    }
+
+    if (key === 'Backspace') {
+      if (this.searchQuery.length > 0) {
+        this.searchQuery = this.searchQuery.slice(0, -1);
+        this.updateSearchBar();
+        this.liveSearch();
+      }
+      return;
+    }
+
+    // Printable character
+    if (key.length === 1) {
+      this.searchQuery += key;
+      this.updateSearchBar();
+      this.liveSearch();
+      return;
+    }
+  }
+
+  /** Live search: highlight matches as you type. */
+  liveSearch() {
+    this.clearSearchHighlights();
+    if (!this.searchQuery) {
+      this.searchMatches = [];
+      this.searchMatchIndex = -1;
+      this.updateSearchBar();
+      return;
+    }
+    this.findSearchMatches();
+    this.highlightSearchMatches();
+    // Jump to first match from current position
+    if (this.searchMatches.length > 0) {
+      this.searchMatchIndex = this.findNearestMatch(this.cursorNodeIndex, this.cursorCharIndex, 'forward');
+      this.jumpToSearchMatch();
+    }
+    this.updateSearchBar();
+  }
+
+  /** Finalize search on Enter. */
+  executeSearch() {
+    this.clearSearchHighlights();
+    if (!this.searchQuery) {
+      this.searchMatches = [];
+      this.searchMatchIndex = -1;
+      this.updateSearchBar();
+      return;
+    }
+    this.findSearchMatches();
+    this.highlightSearchMatches();
+    if (this.searchMatches.length > 0) {
+      this.searchMatchIndex = this.findNearestMatch(this.cursorNodeIndex, this.cursorCharIndex, 'forward');
+      this.jumpToSearchMatch();
+    }
+  }
+
+  /** Find all matches of the search query in the text nodes. */
+  findSearchMatches() {
+    this.searchMatches = [];
+    const query = this.searchQuery.toLowerCase();
+    if (!query) return;
+
+    for (let i = 0; i < this.textNodes.length; i++) {
+      const text = this.textNodes[i].textContent.toLowerCase();
+      let startIdx = 0;
+      while (true) {
+        const idx = text.indexOf(query, startIdx);
+        if (idx === -1) break;
+        this.searchMatches.push({ nodeIndex: i, charIndex: idx, length: query.length });
+        startIdx = idx + 1;
+        // For overlapping matches (unlikely with real text, but correct)
+      }
+    }
+  }
+
+  /** Find the nearest match at or after the given position. */
+  findNearestMatch(fromNodeIndex, fromCharIndex, direction) {
+    if (this.searchMatches.length === 0) return -1;
+
+    if (direction === 'forward') {
+      // Find first match at or after current position
+      for (let i = 0; i < this.searchMatches.length; i++) {
+        const m = this.searchMatches[i];
+        if (m.nodeIndex > fromNodeIndex || (m.nodeIndex === fromNodeIndex && m.charIndex >= fromCharIndex)) {
+          return i;
+        }
+      }
+      // Wrap: start from beginning
+      return 0;
+    } else {
+      // Find first match at or before current position
+      for (let i = this.searchMatches.length - 1; i >= 0; i--) {
+        const m = this.searchMatches[i];
+        if (m.nodeIndex < fromNodeIndex || (m.nodeIndex === fromNodeIndex && m.charIndex <= fromCharIndex)) {
+          return i;
+        }
+      }
+      // Wrap: start from end
+      return this.searchMatches.length - 1;
+    }
+  }
+
+  /** Highlight all matches using overlaid divs (no DOM mutation). */
+  highlightSearchMatches() {
+    this.clearSearchHighlights();
+    if (this.searchMatches.length === 0) return;
+
+    const currentMatch = this.searchMatchIndex >= 0 ? this.searchMatches[this.searchMatchIndex] : null;
+
+    for (let i = 0; i < this.searchMatches.length; i++) {
+      const m = this.searchMatches[i];
+      const node = this.textNodes[m.nodeIndex];
+      if (!node) continue;
+
+      try {
+        const range = document.createRange();
+        range.setStart(node, m.charIndex);
+        range.setEnd(node, m.charIndex + m.length);
+        const rect = range.getBoundingClientRect();
+
+        const highlight = document.createElement('div');
+        highlight.className = 'vim-search-highlight';
+        if (currentMatch && i === this.searchMatchIndex) {
+          highlight.className = 'vim-search-highlight vim-search-highlight-current';
+        }
+        highlight.style.cssText = `
+          position: absolute;
+          left: ${rect.left + window.scrollX}px;
+          top: ${rect.top + window.scrollY}px;
+          width: ${rect.width}px;
+          height: ${rect.height}px;
+          pointer-events: none;
+          z-index: 9998;
+          mix-blend-mode: difference;
+          opacity: 0.4;
+          background: var(--accent, #ff0000);
+        `;
+        document.body.appendChild(highlight);
+        this.searchHighlights.push(highlight);
+      } catch (e) {
+        // Range might be invalid if text nodes changed, skip
+      }
+    }
+  }
+
+  /** Remove all search highlight overlays. */
+  clearSearchHighlights() {
+    for (const el of this.searchHighlights) {
+      el.remove();
+    }
+    this.searchHighlights = [];
+  }
+
+  /** Jump to the current search match and scroll it into view. */
+  jumpToSearchMatch() {
+    if (this.searchMatchIndex < 0 || this.searchMatchIndex >= this.searchMatches.length) return;
+    const match = this.searchMatches[this.searchMatchIndex];
+    this.cursorNodeIndex = match.nodeIndex;
+    this.cursorCharIndex = match.charIndex;
+    this.showCursor();
+    this.updateCursor();
+    // Scroll the match into view
+    const node = this.textNodes[match.nodeIndex];
+    if (node && node.parentElement) {
+      node.parentElement.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+
+  /** n — move to next search match. */
+  searchNext() {
+    if (this.searchMatches.length === 0) return;
+    this.searchMatchIndex = (this.searchMatchIndex + 1) % this.searchMatches.length;
+    if (!this.active) this.showCursor();
+    this.highlightSearchMatches();
+    this.jumpToSearchMatch();
+  }
+
+  /** N — move to previous search match. */
+  searchPrev() {
+    if (this.searchMatches.length === 0) return;
+    this.searchMatchIndex = (this.searchMatchIndex - 1 + this.searchMatches.length) % this.searchMatches.length;
+    if (!this.active) this.showCursor();
+    this.highlightSearchMatches();
+    this.jumpToSearchMatch();
+  }
+}
 let vimCursor = null;
 
 function initVimCursor() {
