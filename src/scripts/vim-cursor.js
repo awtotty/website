@@ -514,16 +514,23 @@ class VimCursor {
       const text = node.textContent;
       if (text.length === 0) continue;
 
-      // Find a visible character to check Y position
-      let r = null;
-      for (let ci = 0; ci < Math.min(text.length, 20); ci++) {
-        r = this.getCharRect(ni, ci);
-        if (r && r.width > 0 && r.height > 0) break;
-        r = null;
+      // For backward: check the LAST character first (that's where we'd land),
+      // then scan backward looking for any char on our line.
+      // This matters for long text nodes that span multiple lines —
+      // the first char might be on a different line than the last char.
+      let onSameLine = false;
+      for (let ci = text.length - 1; ci >= 0 && ci >= text.length - 20; ci--) {
+        const r = this.getCharRect(ni, ci);
+        if (!r || r.width === 0 || r.height === 0) continue;
+        if (Math.abs(r.top - currentY) <= Math.max(lineHeight * 0.5, 5)) {
+          onSameLine = true;
+          break;
+        }
+        // If we've gone too far above, this node is entirely on a different line
+        if (r.top < currentY - lineHeight) break;
       }
 
-      if (!r) continue;
-      if (Math.abs(r.top - currentY) > Math.max(lineHeight * 0.5, 5)) break;
+      if (!onSameLine) break;
 
       this.cursorNodeIndex = ni;
       this.cursorCharIndex = text.length - 1;
