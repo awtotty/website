@@ -133,6 +133,10 @@ class VimCursor {
   handleKeyDown(e) {
     const key = e.key;
 
+    // Don't intercept when modifier keys are held — let browser handle shortcuts
+    // e.g. Alt+Left = browser back, Ctrl+Left = word back in text fields, etc.
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+
     // Don't intercept when user is typing in an input
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") {
       return;
