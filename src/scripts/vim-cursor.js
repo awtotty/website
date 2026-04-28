@@ -11,8 +11,6 @@
 const SCROLLOFF = 8;
 const G_CHORD_MS = 500;
 
-const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 function caretPosFromPoint(x, y) {
   if (document.caretPositionFromPoint) {
     const p = document.caretPositionFromPoint(x, y);
@@ -76,7 +74,6 @@ class VimCursor {
   createCursorElement() {
     const el = document.createElement("div");
     el.id = "vim-cursor";
-    el.classList.add("vim-cursor-blink");
     el.setAttribute("aria-hidden", "true");
     document.body.appendChild(el);
     this.cursorEl = el;
@@ -358,7 +355,6 @@ class VimCursor {
     this.active = true;
     if (this.cursorEl) {
       this.cursorEl.style.display = "block";
-      this.resetBlink();
     }
   }
 
@@ -366,14 +362,6 @@ class VimCursor {
     this.active = false;
     if (this.cursorEl) this.cursorEl.style.display = "none";
     this.clearHover();
-  }
-
-  /** Restart the blink animation so the cursor is visible right after movement. */
-  resetBlink() {
-    if (!this.cursorEl || REDUCED_MOTION) return;
-    this.cursorEl.classList.remove("vim-cursor-blink");
-    void this.cursorEl.offsetWidth;
-    this.cursorEl.classList.add("vim-cursor-blink");
   }
 
   /** True line-box height from the nearest block ancestor's computed CSS. */
@@ -423,11 +411,10 @@ class VimCursor {
     const rect = this.getCursorRect();
     if (!rect) return;
 
-    // Hide the block cursor overlay on interactive elements — the vim-hover
-    // highlight is already providing visual feedback.
+    // Only show the cursor element when in active vim nav mode
     if (this.cursorInteractive) {
       this.cursorEl.style.display = "none";
-    } else {
+    } else if (this.active) {
       this.cursorEl.style.display = "block";
     }
 
@@ -460,7 +447,6 @@ class VimCursor {
       window.scrollTo({ top: absBottom - window.innerHeight + pad });
     }
 
-    this.resetBlink();
     this.updateHover();
   }
 

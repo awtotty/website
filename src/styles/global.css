@@ -5,7 +5,7 @@
   --fg: #000000;
   --muted: #666666;
   --accent: #ff0000;
-  --border: 1px solid #666666;
+  --border: 1px solid #000000;
   --font: "IBM Plex Mono", "Courier New", Courier, monospace;
 }
 
@@ -202,27 +202,6 @@ blockquote {
   background: var(--fg);
   color: var(--bg);
   mix-blend-mode: difference;
-}
-
-#vim-cursor.vim-cursor-blink {
-  animation: vim-blink 1.06s step-end infinite;
-}
-
-@keyframes vim-blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #vim-cursor.vim-cursor-blink {
-    animation: none;
-  }
 }
 
 /* Inputs */
