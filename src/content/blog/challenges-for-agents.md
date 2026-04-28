@@ -2,6 +2,7 @@
 title: "Near-Term Problems for Agents"
 description: "A short summary of the biggest challenges facing effective agentic workflows as of April 2026"
 date: 2026-04-24
+tags: ["ai", "agents", "memory", "scaling"]
 ---
 
 Right, straight to it. Here are the biggest problems I see facing AI agent systems for the next 6-12 months.

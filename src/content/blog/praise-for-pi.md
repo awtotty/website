@@ -2,6 +2,7 @@
 title: "Praise for Pi"
 description: "The little agent harness that could"
 date: 2026-04-22
+tags: ["ai", "agents", "extensibility", "open source"]
 ---
 
 For months I've been a die-hard Claude Code user.

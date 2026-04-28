@@ -5,7 +5,7 @@
   --fg: #000000;
   --muted: #666666;
   --accent: #ff0000;
-  --border: 2px solid #000000;
+  --border: 1px solid #666666;
   --font: "IBM Plex Mono", "Courier New", Courier, monospace;
 }
 
@@ -15,7 +15,7 @@
     --fg: #ffffff;
     --muted: #aaaaaa;
     --accent: #19c046;
-    --border: 2px solid #ffffff;
+    --border: 1px solid #ffffff;
   }
 }
 
@@ -225,7 +225,27 @@ blockquote {
   }
 }
 
-/* Simulated hover state for elements the cursor is on top of */
+/* Inputs */
+input {
+  font-family: var(--font);
+  font-size: 0.875rem;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--muted);
+  padding: 0.25rem 0.5rem;
+  margin-bottom: 0.5rem;
+  outline: none;
+  width: 50%;
+}
+
+input:focus {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+input::placeholder {
+  color: var(--muted);
+}
 a.vim-hover,
 a.vim-hover:visited {
   color: var(--accent);
