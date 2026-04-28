@@ -353,9 +353,7 @@ class VimCursor {
 
   showCursor() {
     this.active = true;
-    if (this.cursorEl) {
-      this.cursorEl.style.display = "block";
-    }
+    this.updatePosition();
   }
 
   hideCursor() {
