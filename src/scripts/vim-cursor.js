@@ -776,122 +776,123 @@ class VimCursor {
     return text[ci];
   }
 
-  nextCharPos(ni, ci) {
-    ci++;
-    while (ni < this.textNodes.length) {
-      const text = this.textNodes[ni]?.textContent;
-      if (text && ci < text.length) return { ni, ci };
-      ni++;
-      ci = 0;
-    }
-    return null;
-  }
+  wordState() {
+    const chars = [];
+    const spans = [];
+    let current = null;
 
-  prevCharPos(ni, ci) {
-    ci--;
-    while (ni >= 0) {
-      const text = this.textNodes[ni]?.textContent;
-      if (text && ci >= 0 && ci < text.length) return { ni, ci };
-      ni--;
-      if (ni >= 0) {
-        const t = this.textNodes[ni]?.textContent;
-        ci = t ? t.length - 1 : -1;
+    for (let ni = 0; ni < this.textNodes.length; ni++) {
+      const text = this.textNodes[ni]?.textContent || "";
+      for (let ci = 0; ci < text.length; ci++) {
+        const idx = chars.length;
+        const word = this.isWordChar(text[ci]);
+        chars.push({ ni, ci, word });
+
+        if (word && !current) current = { start: idx, end: idx };
+        if (word && current) current.end = idx;
+        if (!word && current) {
+          spans.push(current);
+          current = null;
+        }
+      }
+
+      // Text nodes are separate DOM positions. Without an explicit boundary,
+      // the final word of one list item and the first word of the next can be
+      // merged into one span (e.g. "isolation" + "Long"), causing e/w/b to
+      // skip first/last words in lists.
+      if (current) {
+        spans.push(current);
+        current = null;
       }
     }
-    return null;
+
+    const indexByPos = new Map(chars.map((c, i) => [`${c.ni}:${c.ci}`, i]));
+    return { chars, spans, indexByPos };
+  }
+
+  setCursorFromFlatChar(chars, idx) {
+    const ch = chars[idx];
+    if (!ch) return false;
+    this.cursorNodeIndex = ch.ni;
+    this.cursorCharIndex = ch.ci;
+    this.cursorInteractive = null;
+    this.updatePosition();
+    return true;
+  }
+
+  currentFlatWordIndex(state) {
+    const fallback = state.indexByPos.get(
+      `${this.cursorNodeIndex}:${this.cursorCharIndex}`,
+    );
+    const cursorRect = this.getCursorRect();
+    if (!cursorRect) return fallback;
+
+    const x = cursorRect.left + cursorRect.width / 2;
+    const y = cursorRect.top + cursorRect.height / 2;
+    let best = null;
+
+    for (let idx = 0; idx < state.chars.length; idx++) {
+      const ch = state.chars[idx];
+      if (!ch.word) continue;
+      const r = this.getCharRect(ch.ni, ch.ci);
+      if (!r || !r.height) continue;
+      const tolerance = Math.max(r.height * 0.6, 6);
+      const cy = r.top + r.height / 2;
+      if (Math.abs(cy - y) > tolerance) continue;
+      const cx = r.left + r.width / 2;
+      const dist = Math.abs(cx - x);
+      if (!best || dist < best.dist) best = { idx, dist };
+    }
+
+    return best ? best.idx : fallback;
   }
 
   moveWordForward() {
     this.goalX = null;
-    if (this.cursorInteractive) {
-      this.cursorInteractive = null;
-      // Move to next text node
-      if (this.cursorNodeIndex >= 0 && this.cursorNodeIndex < this.textNodes.length) {
-        this.cursorCharIndex = 0;
-      }
-      this.updatePosition();
-      return;
-    }
-    let pos = { ni: this.cursorNodeIndex, ci: this.cursorCharIndex };
-    const startClass = this.charClass(this.getCharAt(pos.ni, pos.ci));
+    if (this.cursorInteractive) return;
 
-    while (pos) {
-      const next = this.nextCharPos(pos.ni, pos.ci);
-      if (!next) break;
-      if (this.charClass(this.getCharAt(next.ni, next.ci)) !== startClass) {
-        pos = next;
-        break;
-      }
-      pos = next;
-    }
-    while (pos && this.charClass(this.getCharAt(pos.ni, pos.ci)) === "blank") {
-      const next = this.nextCharPos(pos.ni, pos.ci);
-      if (!next) break;
-      pos = next;
-    }
+    const state = this.wordState();
+    const current = this.currentFlatWordIndex(state);
+    if (current === undefined) return;
 
-    this.cursorNodeIndex = pos.ni;
-    this.cursorCharIndex = pos.ci;
-    this.updatePosition();
+    const target = state.spans.find((span) => span.start > current);
+    if (target) this.setCursorFromFlatChar(state.chars, target.start);
   }
 
   moveWordEnd() {
     this.goalX = null;
-    if (this.cursorInteractive) {
-      this.updatePosition();
+    if (this.cursorInteractive) return;
+
+    const state = this.wordState();
+    const current = this.currentFlatWordIndex(state);
+    if (current === undefined) return;
+
+    const containing = state.spans.find(
+      (span) => current >= span.start && current <= span.end,
+    );
+    if (containing && current < containing.end) {
+      this.setCursorFromFlatChar(state.chars, containing.end);
       return;
     }
-    let pos = this.nextCharPos(this.cursorNodeIndex, this.cursorCharIndex);
-    if (!pos) return;
 
-    while (pos && this.charClass(this.getCharAt(pos.ni, pos.ci)) === "blank") {
-      const next = this.nextCharPos(pos.ni, pos.ci);
-      if (!next) break;
-      pos = next;
-    }
-    if (!pos) return;
-
-    const tokenClass = this.charClass(this.getCharAt(pos.ni, pos.ci));
-    while (pos) {
-      const next = this.nextCharPos(pos.ni, pos.ci);
-      if (!next) break;
-      if (this.charClass(this.getCharAt(next.ni, next.ci)) !== tokenClass)
-        break;
-      pos = next;
-    }
-
-    this.cursorNodeIndex = pos.ni;
-    this.cursorCharIndex = pos.ci;
-    this.updatePosition();
+    const target = state.spans.find((span) => span.end > current);
+    if (target) this.setCursorFromFlatChar(state.chars, target.end);
   }
 
   moveWordBackward() {
     this.goalX = null;
-    if (this.cursorInteractive) {
-      this.updatePosition();
-      return;
-    }
-    let pos = this.prevCharPos(this.cursorNodeIndex, this.cursorCharIndex);
-    if (!pos) return;
+    if (this.cursorInteractive) return;
 
-    while (pos && this.charClass(this.getCharAt(pos.ni, pos.ci)) === "blank") {
-      const prev = this.prevCharPos(pos.ni, pos.ci);
-      if (!prev) break;
-      pos = prev;
-    }
+    const state = this.wordState();
+    const current = this.currentFlatWordIndex(state);
+    if (current === undefined) return;
 
-    const tokenClass = this.charClass(this.getCharAt(pos.ni, pos.ci));
-    while (pos) {
-      const prev = this.prevCharPos(pos.ni, pos.ci);
-      if (!prev) break;
-      if (this.charClass(this.getCharAt(prev.ni, prev.ci)) !== tokenClass)
-        break;
-      pos = prev;
+    let target = null;
+    for (const span of state.spans) {
+      if (span.start >= current) break;
+      target = span;
     }
-
-    this.cursorNodeIndex = pos.ni;
-    this.cursorCharIndex = pos.ci;
-    this.updatePosition();
+    if (target) this.setCursorFromFlatChar(state.chars, target.start);
   }
 
   // --- File motions (gg/G) ---
