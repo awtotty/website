@@ -581,8 +581,17 @@ class VimCursor {
   findAdjacentLineRect(direction) {
     const currentRect = this.getCursorRect();
     if (!currentRect) return null;
-    const currentTop = currentRect.top;
-    const currentBottom = currentRect.bottom;
+
+    const currentY = currentRect.top + currentRect.height / 2;
+    const lineHeight =
+      this.measureLineHeight(this.textNodes[this.cursorNodeIndex]) ||
+      currentRect.height ||
+      20;
+    // Inline elements (notably Markdown code/link spans on blog pages) can
+    // produce text-node rects whose tops/bottoms differ slightly from the rest
+    // of the same visual line. Compare line centers with a tolerance so those
+    // fragments are not mistaken for the next/previous line.
+    const sameLineTolerance = Math.max(lineHeight * 0.45, 6);
 
     let best = null; // { rect, dist, interactive }
     const down = direction === "down";
@@ -590,14 +599,9 @@ class VimCursor {
     const lineRects = this.collectLineRects();
     for (const { rect: r, interactive } of lineRects) {
       if (!r.height) continue;
-      let dist;
-      if (down) {
-        if (r.top <= currentTop + 1) continue;
-        dist = r.top - currentBottom;
-      } else {
-        if (r.bottom >= currentBottom - 1) continue;
-        dist = currentTop - r.bottom;
-      }
+      const y = r.top + r.height / 2;
+      const dist = down ? y - currentY : currentY - y;
+      if (dist <= sameLineTolerance) continue;
       if (!best || dist < best.dist)
         best = { rect: r, dist, interactive: interactive || null };
     }
@@ -644,37 +648,49 @@ class VimCursor {
     }
   }
 
-  /** Ask the browser which character is at a given viewport point. */
+  /** Find the known text character closest to a viewport point. */
   findCharAtPoint(x, y) {
-    const pos = caretPosFromPoint(x, y);
-    if (!pos) return null;
-    let { node, offset } = pos;
+    let best = null;
 
-    if (node.nodeType !== Node.TEXT_NODE) {
-      const fallback = this.firstTextNodeAt(x, y);
-      if (!fallback) return null;
-      node = fallback.node;
-      offset = fallback.offset;
-    }
+    for (let ni = 0; ni < this.textNodes.length; ni++) {
+      const node = this.textNodes[ni];
+      const text = node.textContent;
+      if (!text) continue;
 
-    const ni = this.nodeIndex.get(node);
-    if (ni === undefined) return null;
-    const len = node.textContent.length;
-    return { ni, ci: Math.min(offset, Math.max(0, len - 1)) };
-  }
+      for (let ci = 0; ci < text.length; ci++) {
+        const range = document.createRange();
+        range.setStart(node, ci);
+        range.setEnd(node, ci + 1);
 
-  /** Fallback: find a known text node overlapping (x, y). */
-  firstTextNodeAt(x, y) {
-    for (const node of this.textNodes) {
-      const range = document.createRange();
-      range.selectNodeContents(node);
-      for (const r of range.getClientRects()) {
-        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
-          return { node, offset: 0 };
+        for (const r of range.getClientRects()) {
+          if (!r.height) continue;
+
+          const yPad = Math.max(r.height * 0.35, 4);
+          if (y < r.top - yPad || y > r.bottom + yPad) continue;
+
+          const xDist = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+          const yMid = r.top + r.height / 2;
+          const yDist = Math.abs(y - yMid);
+          const dist = xDist * 10 + yDist;
+
+          if (!best || dist < best.dist) {
+            best = { ni, ci, dist };
+          }
         }
       }
     }
-    return null;
+
+    if (best) return { ni: best.ni, ci: best.ci };
+
+    // Last-resort browser caret lookup. The caret APIs return insertion
+    // offsets, not character positions, so this is intentionally not the
+    // primary path for rendered-line navigation.
+    const pos = caretPosFromPoint(x, y);
+    if (!pos || pos.node.nodeType !== Node.TEXT_NODE) return null;
+    const ni = this.nodeIndex.get(pos.node);
+    if (ni === undefined) return null;
+    const len = pos.node.textContent.length;
+    return { ni, ci: Math.min(pos.offset, Math.max(0, len - 1)) };
   }
 
   // --- Line start / end (_ and $) ---
