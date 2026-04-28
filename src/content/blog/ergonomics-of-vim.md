@@ -2,6 +2,7 @@
 title: "The Subtle Ergonomics of Vim"
 description: "A few things I love about Vim motions"
 date: 2026-04-23
+tags: ["vim", "ux", "design"]
 ---
 
 It feels a bit odd to be talking about Vim with the break-neck speed of AI agent evolution making text editors increasingly unnecessary for writing software.
