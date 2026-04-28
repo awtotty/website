@@ -2,6 +2,10 @@
  * Vim-style cursor navigation for the web.
  * Block cursor that moves through text content, simulates hover on
  * interactive elements, and activates them with Enter/Space.
+ *
+ * Interactive elements (inputs, textareas, selects, buttons) are treated as
+ * navigable stops alongside text characters. They can be reached with j/k
+ * vertical movement and activated with Enter, Space, or i.
  */
 
 const SCROLLOFF = 8;
@@ -12,7 +16,7 @@ const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function caretPosFromPoint(x, y) {
   if (document.caretPositionFromPoint) {
     const p = document.caretPositionFromPoint(x, y);
-    return p && p.offsetNode ? { node: p.offsetNode, offset: p.offset } : null;
+    return p && p.offsetNode ? { node: p.offsetNode, offset: p.offsetOffset } : null;
   }
   if (document.caretRangeFromPoint) {
     const r = document.caretRangeFromPoint(x, y);
@@ -25,8 +29,11 @@ class VimCursor {
   constructor() {
     this.textNodes = [];
     this.nodeIndex = new Map();
+    this.interactiveElements = [];
     this.cursorNodeIndex = 0;
     this.cursorCharIndex = 0;
+    // When on an interactive element, cursorNodeIndex is -1 and this is set.
+    this.cursorInteractive = null;
     this.goalX = null;
     this.active = false;
     this.hoveredElement = null;
@@ -47,7 +54,7 @@ class VimCursor {
 
   init() {
     this.createCursorElement();
-    this.scanTextNodes();
+    this.scan();
     this.positionAtHeading();
     this.bindEvents();
   }
@@ -75,24 +82,26 @@ class VimCursor {
     this.cursorEl = el;
   }
 
-  /** Collect visible text nodes within <main> in document order. */
-  scanTextNodes() {
+  /** Collect visible text nodes AND interactive elements within <main>. */
+  scan() {
     this.textNodes = [];
     this.nodeIndex = new Map();
+    this.interactiveElements = [];
     const main = document.querySelector("main");
     if (!main) return;
 
     const hiddenCache = new WeakMap();
-    const isHidden = (parent) => {
-      if (!parent) return true;
-      if (hiddenCache.has(parent)) return hiddenCache.get(parent);
+    const isHidden = (el) => {
+      if (!el) return true;
+      if (hiddenCache.has(el)) return hiddenCache.get(el);
       const hidden =
-        parent.offsetParent === null ||
-        getComputedStyle(parent).visibility === "hidden";
-      hiddenCache.set(parent, hidden);
+        el.offsetParent === null ||
+        getComputedStyle(el).visibility === "hidden";
+      hiddenCache.set(el, hidden);
       return hidden;
     };
 
+    // Collect text nodes
     const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) => {
         const parent = node.parentElement;
@@ -102,11 +111,37 @@ class VimCursor {
         return NodeFilter.FILTER_ACCEPT;
       },
     });
-
     let node;
     while ((node = walker.nextNode())) {
       this.nodeIndex.set(node, this.textNodes.length);
       this.textNodes.push(node);
+    }
+
+    // Collect interactive elements that don't contain text nodes we already
+    // track (inputs, selects, textareas are leaf elements — no text children).
+    // Buttons and links already have text nodes we navigate through, so skip
+    // them unless they're empty.
+    const interactives = main.querySelectorAll(
+      "input, textarea, select, button:not(:has(txt)), a:not(:has(txt))"
+    );
+    for (const el of interactives) {
+      if (isHidden(el)) continue;
+      // Skip disabled inputs
+      if (el.disabled) continue;
+      // Skip hidden inputs
+      if (el.type === "hidden") continue;
+      // Skip elements that already have tracked text nodes inside them
+      // (their text content is already navigable)
+      let hasTrackedText = false;
+      for (const tn of this.textNodes) {
+        if (el.contains(tn)) {
+          hasTrackedText = true;
+          break;
+        }
+      }
+      if (!hasTrackedText) {
+        this.interactiveElements.push(el);
+      }
     }
   }
 
@@ -123,6 +158,7 @@ class VimCursor {
         if (heading.contains(this.textNodes[i])) {
           this.cursorNodeIndex = i;
           this.cursorCharIndex = 0;
+          this.cursorInteractive = null;
           this.updatePosition();
           return;
         }
@@ -130,6 +166,7 @@ class VimCursor {
     }
     this.cursorNodeIndex = 0;
     this.cursorCharIndex = 0;
+    this.cursorInteractive = null;
     this.updatePosition();
   }
 
@@ -156,8 +193,21 @@ class VimCursor {
       t.tagName === "INPUT" ||
       t.tagName === "TEXTAREA" ||
       t.tagName === "SELECT"
-    )
+    ) {
+      // Escape exits the input and returns to vim normal mode
+      if (key === "Escape") {
+        e.preventDefault();
+        t.blur();
+        // Re-position cursor on the interactive element we just left
+        const idx = this.interactiveElements.indexOf(t);
+        if (idx >= 0) {
+          this.cursorInteractive = t;
+          this.cursorNodeIndex = -1;
+        }
+        this.showCursor();
+      }
       return;
+    }
     if (t.isContentEditable) return;
 
     // gg chord
@@ -230,10 +280,17 @@ class VimCursor {
       e.preventDefault();
       if (!this.active) this.showCursor();
     } else if (key === " " || key === "Enter") {
-      // Only intercept when we actually have something to click
-      if (this.active && this.hoveredElement) {
+      if (this.active) {
+        this.activateHovered();
         e.preventDefault();
-        this.hoveredElement.click();
+      }
+      return;
+    } else if (key === "i") {
+      // Enter insert mode: focus the interactive element under the cursor
+      if (this.active && this.cursorInteractive) {
+        e.preventDefault();
+        this.cursorInteractive.focus();
+        return;
       }
       return;
     } else {
@@ -278,6 +335,18 @@ class VimCursor {
     }
   }
 
+  /** Activate the currently hovered element or the interactive element under cursor. */
+  activateHovered() {
+    const el = this.cursorInteractive || this.hoveredElement;
+    if (!el) return;
+    const tag = el.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+      el.focus();
+    } else {
+      el.click();
+    }
+  }
+
   handleResize() {
     clearTimeout(this.resizeTimeout);
     this.resizeTimeout = setTimeout(() => {
@@ -303,7 +372,6 @@ class VimCursor {
   resetBlink() {
     if (!this.cursorEl || REDUCED_MOTION) return;
     this.cursorEl.classList.remove("vim-cursor-blink");
-    // force reflow so the animation restarts from frame 0 on re-add
     void this.cursorEl.offsetWidth;
     this.cursorEl.classList.add("vim-cursor-blink");
   }
@@ -316,7 +384,6 @@ class VimCursor {
       if (!cs.display.startsWith("inline")) {
         const lh = parseFloat(cs.lineHeight);
         if (!isNaN(lh) && lh > 0) return lh;
-        // "normal" — approximate at 1.2× font-size
         const fs = parseFloat(cs.fontSize);
         if (!isNaN(fs) && fs > 0) return fs * 1.2;
         return 0;
@@ -327,6 +394,10 @@ class VimCursor {
   }
 
   getCursorRect() {
+    // If cursor is on an interactive element, use its bounding rect
+    if (this.cursorInteractive) {
+      return this.cursorInteractive.getBoundingClientRect();
+    }
     const node = this.textNodes[this.cursorNodeIndex];
     if (!node) return null;
     const text = node.textContent;
@@ -352,7 +423,16 @@ class VimCursor {
     const rect = this.getCursorRect();
     if (!rect) return;
 
+    // Hide the block cursor overlay on interactive elements — the vim-hover
+    // highlight is already providing visual feedback.
+    if (this.cursorInteractive) {
+      this.cursorEl.style.display = "none";
+    } else {
+      this.cursorEl.style.display = "block";
+    }
+
     let width = rect.width;
+    let height = rect.height;
     if (!width) {
       const m = document.createElement("span");
       m.textContent = "M";
@@ -365,14 +445,12 @@ class VimCursor {
     this.cursorEl.style.left = rect.left + window.scrollX + "px";
     this.cursorEl.style.top = rect.top + window.scrollY + "px";
     this.cursorEl.style.width = width + "px";
-    this.cursorEl.style.height = rect.height + "px";
+    this.cursorEl.style.height = height + "px";
 
-    // Keep SCROLLOFF lines of context above/below. Read line-height from the
-    // parent's computed CSS — that's the true line-box height. `rect.height`
-    // from Range is often just font metrics (~60-75% of the line box) and
-    // underestimates pad noticeably.
+    // Scroll to keep cursor visible
     const node = this.textNodes[this.cursorNodeIndex];
-    const lineHeight = this.measureLineHeight(node) || rect.height || 20;
+    const lineHeight =
+      this.measureLineHeight(node) || rect.height || 20;
     const pad = lineHeight * SCROLLOFF;
     const absTop = rect.top + window.scrollY;
     const absBottom = rect.bottom + window.scrollY;
@@ -390,6 +468,14 @@ class VimCursor {
 
   updateHover() {
     this.clearHover();
+
+    // If cursor is on an interactive element, hover it directly
+    if (this.cursorInteractive) {
+      this.cursorInteractive.classList.add("vim-hover");
+      this.hoveredElement = this.cursorInteractive;
+      return;
+    }
+
     const node = this.textNodes[this.cursorNodeIndex];
     if (!node) return;
 
@@ -427,6 +513,30 @@ class VimCursor {
 
   moveLeft() {
     this.goalX = null;
+    // If on interactive element, move to the last char of the previous text node
+    if (this.cursorInteractive) {
+      const idx = this.interactiveElementIndex();
+      // Try stepping to the text node just before this interactive element
+      // by finding the text node whose document position precedes it
+      this.cursorInteractive = null;
+      // Find nearest text node to the left
+      const rect = this.cursorInteractive
+        ? this.cursorInteractive.getBoundingClientRect()
+        : null;
+      // Fall back: move to last char of current text node position
+      if (this.cursorNodeIndex > 0) {
+        this.cursorNodeIndex--;
+        this.cursorCharIndex = Math.max(
+          0,
+          this.textNodes[this.cursorNodeIndex].textContent.length - 1,
+        );
+      } else {
+        this.cursorNodeIndex = 0;
+        this.cursorCharIndex = 0;
+      }
+      this.updatePosition();
+      return;
+    }
     if (this.cursorCharIndex > 0) {
       this.cursorCharIndex--;
     } else if (this.cursorNodeIndex > 0) {
@@ -441,6 +551,15 @@ class VimCursor {
 
   moveRight() {
     this.goalX = null;
+    if (this.cursorInteractive) {
+      this.cursorInteractive = null;
+      if (this.cursorNodeIndex < this.textNodes.length - 1) {
+        this.cursorNodeIndex++;
+        this.cursorCharIndex = 0;
+      }
+      this.updatePosition();
+      return;
+    }
     const node = this.textNodes[this.cursorNodeIndex];
     if (!node) return;
     if (this.cursorCharIndex < node.textContent.length - 1) {
@@ -455,39 +574,50 @@ class VimCursor {
   // --- Vertical movement (j/k) ---
 
   /**
-   * Find the next visual line above/below the current cursor by walking all
-   * text nodes and collecting per-line rects via Range.getClientRects() — that
-   * returns one rect per visual line in a wrapped range, so we don't have to
-   * scan character-by-character.
+   * Collect visual line rects from both text nodes and interactive elements.
+   * Each rect represents a navigable vertical position.
    */
+  collectLineRects() {
+    const rects = [];
+    for (const node of this.textNodes) {
+      if (!node.textContent) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const r of range.getClientRects()) {
+        if (r.height) rects.push({ rect: r, interactive: null });
+      }
+    }
+    for (const el of this.interactiveElements) {
+      const r = el.getBoundingClientRect();
+      if (r.height) rects.push({ rect: r, interactive: el });
+    }
+    return rects;
+  }
+
   findAdjacentLineRect(direction) {
     const currentRect = this.getCursorRect();
     if (!currentRect) return null;
     const currentTop = currentRect.top;
     const currentBottom = currentRect.bottom;
 
-    let best = null; // { rect, dist }
+    let best = null; // { rect, dist, interactive }
     const down = direction === "down";
 
-    for (const node of this.textNodes) {
-      if (!node.textContent) continue;
-      const range = document.createRange();
-      range.selectNodeContents(node);
-      const lineRects = range.getClientRects();
-      for (const r of lineRects) {
-        if (!r.height) continue;
-        let dist;
-        if (down) {
-          if (r.top <= currentTop + 1) continue;
-          dist = r.top - currentBottom;
-        } else {
-          if (r.bottom >= currentBottom - 1) continue;
-          dist = currentTop - r.bottom;
-        }
-        if (!best || dist < best.dist) best = { rect: r, dist };
+    const lineRects = this.collectLineRects();
+    for (const { rect: r, interactive } of lineRects) {
+      if (!r.height) continue;
+      let dist;
+      if (down) {
+        if (r.top <= currentTop + 1) continue;
+        dist = r.top - currentBottom;
+      } else {
+        if (r.bottom >= currentBottom - 1) continue;
+        dist = currentTop - r.bottom;
       }
+      if (!best || dist < best.dist)
+        best = { rect: r, dist, interactive: interactive || null };
     }
-    return best ? best.rect : null;
+    return best;
   }
 
   moveDown() {
@@ -505,16 +635,27 @@ class VimCursor {
       this.goalX = currentRect.left + currentRect.width / 2;
     }
 
-    const lineRect = this.findAdjacentLineRect(direction);
-    if (!lineRect) return; // At top/bottom of document
+    const target = this.findAdjacentLineRect(direction);
+    if (!target) return;
 
+    // If the closest line belongs to an interactive element, land on it
+    if (target.interactive) {
+      this.cursorInteractive = target.interactive;
+      this.cursorNodeIndex = -1;
+      this.cursorCharIndex = -1;
+      this.updatePosition();
+      return;
+    }
+
+    // Otherwise, find a text character at the goal X position
     const pos = this.findCharAtPoint(
       this.goalX,
-      lineRect.top + lineRect.height / 2,
+      target.rect.top + target.rect.height / 2,
     );
     if (pos) {
       this.cursorNodeIndex = pos.ni;
       this.cursorCharIndex = pos.ci;
+      this.cursorInteractive = null;
       this.updatePosition();
     }
   }
@@ -525,7 +666,6 @@ class VimCursor {
     if (!pos) return null;
     let { node, offset } = pos;
 
-    // caretPositionFromPoint may return an element when between text nodes.
     if (node.nodeType !== Node.TEXT_NODE) {
       const fallback = this.firstTextNodeAt(x, y);
       if (!fallback) return null;
@@ -555,12 +695,13 @@ class VimCursor {
 
   // --- Line start / end (_ and $) ---
 
-  /**
-   * Find the character on the current visual line closest to the given x.
-   * Walks all text nodes whose per-line rects overlap the current line.
-   */
   moveToLineStart() {
     this.goalX = null;
+    if (this.cursorInteractive) {
+      // Already at start of element; just stay
+      this.updatePosition();
+      return;
+    }
     const rect = this.getCursorRect();
     if (!rect) return;
     const edge = this.findEdgeOfCurrentLine("start");
@@ -573,6 +714,10 @@ class VimCursor {
 
   moveToLineEnd() {
     this.goalX = null;
+    if (this.cursorInteractive) {
+      this.updatePosition();
+      return;
+    }
     const rect = this.getCursorRect();
     if (!rect) return;
     const edge = this.findEdgeOfCurrentLine("end");
@@ -658,6 +803,15 @@ class VimCursor {
 
   moveWordForward() {
     this.goalX = null;
+    if (this.cursorInteractive) {
+      this.cursorInteractive = null;
+      // Move to next text node
+      if (this.cursorNodeIndex >= 0 && this.cursorNodeIndex < this.textNodes.length) {
+        this.cursorCharIndex = 0;
+      }
+      this.updatePosition();
+      return;
+    }
     let pos = { ni: this.cursorNodeIndex, ci: this.cursorCharIndex };
     const startClass = this.charClass(this.getCharAt(pos.ni, pos.ci));
 
@@ -683,6 +837,10 @@ class VimCursor {
 
   moveWordEnd() {
     this.goalX = null;
+    if (this.cursorInteractive) {
+      this.updatePosition();
+      return;
+    }
     let pos = this.nextCharPos(this.cursorNodeIndex, this.cursorCharIndex);
     if (!pos) return;
 
@@ -709,6 +867,10 @@ class VimCursor {
 
   moveWordBackward() {
     this.goalX = null;
+    if (this.cursorInteractive) {
+      this.updatePosition();
+      return;
+    }
     let pos = this.prevCharPos(this.cursorNodeIndex, this.cursorCharIndex);
     if (!pos) return;
 
@@ -736,10 +898,37 @@ class VimCursor {
 
   moveToTop() {
     this.goalX = null;
+    // Check if first interactive element is above first text node
+    const firstTextRect = this.textNodes.length > 0
+      ? (() => {
+          for (const n of this.textNodes) {
+            if (n.textContent.trim()) {
+              const r = document.createRange();
+              r.selectNodeContents(n);
+              const rects = r.getClientRects();
+              if (rects.length) return rects[0];
+            }
+          }
+          return null;
+        })()
+      : null;
+
+    for (const el of this.interactiveElements) {
+      const r = el.getBoundingClientRect();
+      if (r.top < (firstTextRect?.top ?? Infinity)) {
+        this.cursorInteractive = el;
+        this.cursorNodeIndex = -1;
+        this.cursorCharIndex = -1;
+        this.updatePosition();
+        return;
+      }
+    }
+
     for (let i = 0; i < this.textNodes.length; i++) {
       if (this.textNodes[i].textContent.trim()) {
         this.cursorNodeIndex = i;
         this.cursorCharIndex = 0;
+        this.cursorInteractive = null;
         this.updatePosition();
         return;
       }
@@ -748,6 +937,33 @@ class VimCursor {
 
   moveToBottom() {
     this.goalX = null;
+    // Check if last interactive element is below last text node
+    const lastTextRect = this.textNodes.length > 0
+      ? (() => {
+          for (let i = this.textNodes.length - 1; i >= 0; i--) {
+            if (this.textNodes[i].textContent.trim()) {
+              const r = document.createRange();
+              r.selectNodeContents(this.textNodes[i]);
+              const rects = r.getClientRects();
+              if (rects.length) return rects[rects.length - 1];
+            }
+          }
+          return null;
+        })()
+      : null;
+
+    for (let i = this.interactiveElements.length - 1; i >= 0; i--) {
+      const el = this.interactiveElements[i];
+      const r = el.getBoundingClientRect();
+      if (r.bottom > (lastTextRect?.bottom ?? -Infinity)) {
+        this.cursorInteractive = el;
+        this.cursorNodeIndex = -1;
+        this.cursorCharIndex = -1;
+        this.updatePosition();
+        return;
+      }
+    }
+
     for (let i = this.textNodes.length - 1; i >= 0; i--) {
       if (this.textNodes[i].textContent.trim()) {
         this.cursorNodeIndex = i;
@@ -755,6 +971,7 @@ class VimCursor {
           0,
           this.textNodes[i].textContent.length - 1,
         );
+        this.cursorInteractive = null;
         this.updatePosition();
         return;
       }
@@ -802,7 +1019,7 @@ class VimCursor {
       count = ` <span class="vim-search-count">[${idx}/${this.searchMatches.length}]</span>`;
     }
     this.searchInputEl.innerHTML =
-      q + '<span class="vim-search-caret"> </span>' + count;
+      q + '<span class="vim-search-caret"> </span>' + count;
   }
 
   removeSearchBar() {
@@ -934,6 +1151,7 @@ class VimCursor {
     const m = this.searchMatches[this.searchMatchIndex];
     this.cursorNodeIndex = m.nodeIndex;
     this.cursorCharIndex = m.charIndex;
+    this.cursorInteractive = null;
     this.showCursor();
     this.updatePosition();
   }

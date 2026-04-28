@@ -257,6 +257,14 @@ button.vim-hover,
   outline-offset: 2px;
 }
 
+input.vim-hover,
+textarea.vim-hover,
+select.vim-hover {
+  background: var(--bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* Search highlights via CSS Custom Highlight API */
 ::highlight(vim-search) {
   background: var(--accent);
