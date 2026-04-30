@@ -40,45 +40,11 @@ const formatDate = (d: Date) =>
 
   <p>THOUGHTS <a class="button" href="/blog/rss.xml" download>rss</a></p>
 
-  <input
-    id="thoughts-search"
-    type="text"
-    placeholder="search..."
-    autocomplete="off"
-  />
-
-  <ul id="thoughts-list">
+  <ul>
     {sortedPosts.map((post) => (
-      <li data-search={`${post.data.title} ${post.data.description} ${formatDate(post.data.date)} ${(post.data.tags ?? []).join(" ")}`.toLowerCase()}>
+      <li>
         {post.data.title} ({formatDate(post.data.date)}) ... <a class="button" href={`/blog/${post.id}`}>read</a>
       </li>
     ))}
   </ul>
-
-  <script>
-    const input = document.getElementById("thoughts-search") as HTMLInputElement;
-    const list = document.getElementById("thoughts-list");
-    if (input && list) {
-      const items = Array.from(list.querySelectorAll("li"));
-      input.addEventListener("input", () => {
-        const query = input.value.toLowerCase().trim();
-        for (const item of items) {
-          const haystack = (item as HTMLElement).dataset.search ?? "";
-          if (!query || fuzzyMatch(query, haystack)) {
-            item.style.display = "";
-          } else {
-            item.style.display = "none";
-          }
-        }
-      });
-    }
-
-    function fuzzyMatch(query: string, text: string): boolean {
-      let qi = 0;
-      for (let ti = 0; ti < text.length && qi < query.length; ti++) {
-        if (text[ti] === query[qi]) qi++;
-      }
-      return qi === query.length;
-    }
-  </script>
 </Base>
