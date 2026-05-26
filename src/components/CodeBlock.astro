@@ -1,0 +1,14 @@
+---
+import { Code } from "astro/components";
+
+interface Props {
+  code: string;
+  lang?: string;
+}
+
+const { code, lang = "ts" } = Astro.props;
+---
+
+<div class="code-block">
+  <Code code={code.trim()} lang={lang} />
+</div>
