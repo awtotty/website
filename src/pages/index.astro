@@ -30,7 +30,7 @@ const formatDate = (d: Date) =>
       const link = project.data.url ?? project.data.github;
       return (
         <li>
-          [{project.data.title}]({link ? <a href={link} target="_blank">{link}</a> : "—"}) ... <a class="button" href={`/projects/${project.id}`}>read</a>
+          {project.data.title} ({link ? <a href={link} target="_blank">{link}</a> : "—"}) ... <a class="button" href={`/projects/${project.id}`}>read</a>
         </li>
       );
     })}
