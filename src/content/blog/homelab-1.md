@@ -91,3 +91,5 @@ You'll also want to disable the enterprise repos and add the no-subscription one
 Check the Proxmox docs.
 
 It's over. You've done it. Now you can start.
+
+[<Read Episode 2>](https://www.austin-totty.com/blog/homelab-2)
